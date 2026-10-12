@@ -1,0 +1,8 @@
+Category	DotCount	GapCount	MinGap	MaxGap	MeanGap	DFA_Alpha
+
+NormalSide_Alfa	35	34	1	2160	389.4	0.3814
+NormalSide_Zipf	1098	1097	1	448	14.7	0.4787
+NormalSide_All	1133	1132	1	448	14.2	0.4801
+TumorSide_Alfa	25	24	1	3131	550.7	0.1862
+TumorSide_Zipf	1141	1140	1	632	13.9	0.4982
+TumorSide_All	1166	1165	1	632	13.6	0.4884

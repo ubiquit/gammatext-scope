@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>gammatext-scope</AssemblyName>
+    <RootNamespace>GammaTextScope</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <Description>Stop-codon γtext comparison of tumour and matched-normal genomes (DNA-scope pipeline).</Description>
+    <NoWarn>CS0168;CS0219;CS0414;CS0649;CS8321;CS0162;CS0618</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MathNet.Numerics" Version="4.15.0" />
+    <PackageReference Include="OxyPlot.Core" Version="2.0.0" />
+  </ItemGroup>
+
+</Project>

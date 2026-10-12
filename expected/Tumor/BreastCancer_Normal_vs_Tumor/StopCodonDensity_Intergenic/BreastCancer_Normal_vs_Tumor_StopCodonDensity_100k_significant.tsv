@@ -1,0 +1,2 @@
+Chromosome	BinStart	BinEnd	Normal_rate_per100k	Tumor_rate_per100k	Delta_per100k	Rate_ratio	Normal_count	Tumor_count	Normal_trials	Tumor_trials	Z	P	Q
+9	56600000	56700000	132	17.0003	-114.9997	0.1288	132	17	100000	99998	-9.425	0.000E+00	0.000E+00

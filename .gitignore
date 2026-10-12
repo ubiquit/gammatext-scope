@@ -1,0 +1,10 @@
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.swp
+TestResults/
+figures/__pycache__/
+figures/.venv/
+*.pyc
