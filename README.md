@@ -29,8 +29,12 @@ implementation*).
 | `alpha-compare` | sequences + both samples' classifications | `StopCodonAlphaComparison_<mode>/StopCodonAlpha_<pair>_chr*.tsv`, `_AllChromosomes.tsv` | DNA-scopes (Fig. 2–3, Appendices 1–2), Table 3 window counts |
 | `decay-dfa` | `_AllChromosomes.tsv` | `DecayGapDFA_<mode>/DecayGapDFA_<pair>_Summary.txt` | Tables 2–3 (DFA α of decay-marker gaps) |
 
-`<mode>` is `Intergenic` (npc-DNA), `Gene` (pc-DNA) or `WholeGenome`
-(Intergenic + Gene windows merged in genomic order).
+`<mode>` is `Intergenic` (npc-DNA), `Gene` (pc-DNA) or `WholeGenome` (the
+unmasked chromosome). For `alpha-compare` and `decay-dfa`, `--mode WholeGenome`
+requires whole-genome window classifications for both samples; `--merged`
+selects the legacy behaviour instead — the union of the Intergenic and Gene
+windows in genomic order (outputs suffixed `WholeGenomeMerged`), which depends
+on the gene annotation.
 
 ## Build and run
 

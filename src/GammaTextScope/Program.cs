@@ -14,11 +14,13 @@ commands
   prepare-annotation  --sample S                         relabel <S>_AccessionProcessing/genomic.gff into <S>_GeneInfo
   classify            --sample S --mode M                per-window Zipf/alfa classification (writes Experiment_<S>_<M>_7000/WindowWidth1)
   density             --normal N --tumor T --pair P --mode M   stop codons per 100 kb bin and per chromosome
-  alpha-compare       --normal N --tumor T --pair P --mode M   per-window stop-codon delta + qualification (DNA-scope data)
-  decay-dfa           --pair P --mode M                  DFA of the qualification-decay marker gaps (needs alpha-compare)
+  alpha-compare       --normal N --tumor T --pair P --mode M [--merged]   per-window stop-codon delta + qualification (DNA-scope data)
+  decay-dfa           --pair P --mode M [--merged]       DFA of the qualification-decay marker gaps (needs alpha-compare)
 
 options
   --mode M            Intergenic | Gene | Exon | WholeGenome
+  --merged            with --mode WholeGenome: use the union of the Intergenic and Gene classifications
+                      (legacy behaviour, outputs *_WholeGenomeMerged) instead of whole-genome classifications
   --data-root DIR     input root (default D:\Files\Stream or $GAMMATEXT_DATA)
   --out-root DIR      output root (default D:\Files\Harvests or $GAMMATEXT_OUT)
   --chromosomes LIST  restrict to chromosomes, e.g. 21,22,X
@@ -61,11 +63,11 @@ options
                         return 0;
 
                     case "alpha-compare":
-                        new StopCodonAlphaComparison().Run(Require(opts, "normal"), Require(opts, "tumor"), Require(opts, "pair"), Mode(opts));
+                        new StopCodonAlphaComparison().Run(Require(opts, "normal"), Require(opts, "tumor"), Require(opts, "pair"), Mode(opts), opts.ContainsKey("merged"));
                         return 0;
 
                     case "decay-dfa":
-                        new DecayGapDfa().Run(Require(opts, "pair"), Mode(opts).ToString());
+                        new DecayGapDfa().Run(Require(opts, "pair"), Mode(opts).ToString() + (opts.ContainsKey("merged") ? "Merged" : ""));
                         return 0;
 
                     default:

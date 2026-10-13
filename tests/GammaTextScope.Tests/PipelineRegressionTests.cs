@@ -18,10 +18,10 @@ namespace GammaTextScope.Tests
         [Theory]
         [InlineData("BreastCancer", "Intergenic")]
         [InlineData("BreastCancer", "Gene")]
-        [InlineData("BreastCancer", "WholeGenome")]
+        [InlineData("BreastCancer", "WholeGenomeMerged")]
         [InlineData("Melanoma", "Intergenic")]
         [InlineData("Melanoma", "Gene")]
-        [InlineData("Melanoma", "WholeGenome")]
+        [InlineData("Melanoma", "WholeGenomeMerged")]
         public void DecayDfaReproducesSummaryAndGapSeries(string pair, string mode)
         {
             string outRoot = TestData.StageOutRoot($"dfa-{pair}-{mode}", new string[0]);
@@ -67,19 +67,20 @@ namespace GammaTextScope.Tests
         [SkippableTheory]
         [InlineData("BreastCancer", 0, "Intergenic")]
         [InlineData("BreastCancer", 0, "Gene")]
-        [InlineData("BreastCancer", 0, "WholeGenome")]
+        [InlineData("BreastCancer", 0, "WholeGenomeMerged")]
         [InlineData("Melanoma", 1, "Intergenic")]
         [InlineData("Melanoma", 1, "Gene")]
-        [InlineData("Melanoma", 1, "WholeGenome")]
+        [InlineData("Melanoma", 1, "WholeGenomeMerged")]
         public void AlphaComparisonReproducesChromosome21(string pair, int which, string mode)
         {
             Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
             var samples = which == 0 ? BreastPair : MelanomaPair;
-            var ft = System.Enum.Parse<FeatureType>(mode);
+            bool merged = mode.EndsWith("Merged");
+            var ft = System.Enum.Parse<FeatureType>(mode.Replace("Merged", ""));
             string outRoot = TestData.StageOutRoot($"alpha-{pair}-{mode}", samples, FeatureType.Intergenic, FeatureType.Gene);
             TestData.UseOutRoot(outRoot, "21");
 
-            new StopCodonAlphaComparison().Run(samples[0], samples[1], pair, ft);
+            new StopCodonAlphaComparison().Run(samples[0], samples[1], pair, ft, merged);
 
             string rel = $"Tumor/{pair}/StopCodonAlphaComparison_{mode}/StopCodonAlpha_{pair}_chr21.tsv";
             Assert.Equal(File.ReadAllText(TestData.Expected(rel)), File.ReadAllText(Path.Combine(outRoot, rel)));

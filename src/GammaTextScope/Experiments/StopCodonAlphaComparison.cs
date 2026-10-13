@@ -22,15 +22,24 @@ namespace GammaTextScope
     {
         private const int WindowWidth = 1; // WW1 ≈ 133k bp, closest to 100k
 
+        /// <param name="merged">WholeGenome only: use the union of the Intergenic and Gene window
+        /// classifications (legacy behaviour, output suffix WholeGenomeMerged) instead of the
+        /// annotation-free whole-genome classification.</param>
         public void Run(string speciesNormal, string speciesTumor, string pairName = null,
-                        FeatureType featureType = FeatureType.Intergenic)
+                        FeatureType featureType = FeatureType.Intergenic, bool merged = false)
         {
             pairName ??= speciesNormal + "_VS_" + speciesTumor;
 
-            if (featureType == FeatureType.WholeGenome)
+            if (featureType == FeatureType.WholeGenome && merged)
             {
                 RunWholeGenome(speciesNormal, speciesTumor, pairName);
                 return;
+            }
+            if (featureType == FeatureType.WholeGenome)
+            {
+                foreach (var s in new[] { speciesNormal, speciesTumor })
+                    if (!Directory.Exists(GetIndexDir(s, FeatureType.WholeGenome)))
+                        throw new ArgumentException($"no WholeGenome classification for {s} ({GetIndexDir(s, FeatureType.WholeGenome)}): run 'classify --mode WholeGenome' first, or pass --merged for the legacy union of Intergenic and Gene");
             }
 
             RunSingleFeature(speciesNormal, speciesTumor, pairName, featureType);
@@ -114,12 +123,12 @@ namespace GammaTextScope
         }
 
         // ═══════════════════════════════════════════════════════════════
-        //  WholeGenome path: merge Intergenic + Gene alpha results
+        //  WholeGenomeMerged path (legacy): merge Intergenic + Gene alpha results
         // ═══════════════════════════════════════════════════════════════
 
         private void RunWholeGenome(string speciesNormal, string speciesTumor, string pairName)
         {
-            const string featureLabel = "WholeGenome";
+            const string featureLabel = "WholeGenomeMerged";
             string outDir = PipelineConfig.Default.TumorOutDir(pairName, "StopCodonAlphaComparison", featureLabel) + System.IO.Path.DirectorySeparatorChar;
             EnsureDirectory(outDir);
 

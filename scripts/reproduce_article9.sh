@@ -17,10 +17,19 @@ done
 
 run_pair() {  # normal tumor density-pair alpha-pair
   for m in Intergenic Gene WholeGenome; do
-    "$EXE" density       --normal "$1" --tumor "$2" --pair "$3" --mode $m
+    "$EXE" density --normal "$1" --tumor "$2" --pair "$3" --mode $m
+  done
+  for m in Intergenic Gene; do
     "$EXE" alpha-compare --normal "$1" --tumor "$2" --pair "$4" --mode $m
     "$EXE" decay-dfa     --pair "$4" --mode $m
   done
+  # legacy whole-DNA variant: union of the Intergenic and Gene windows
+  "$EXE" alpha-compare --normal "$1" --tumor "$2" --pair "$4" --mode WholeGenome --merged
+  "$EXE" decay-dfa     --pair "$4" --mode WholeGenome --merged
+  # annotation-free whole-DNA variant: needs `classify --mode WholeGenome` for both samples
+  if "$EXE" alpha-compare --normal "$1" --tumor "$2" --pair "$4" --mode WholeGenome; then
+    "$EXE" decay-dfa --pair "$4" --mode WholeGenome
+  fi
 }
 run_pair HomoSapiens_BreastCancer_Normal HomoSapiens_BreastCancer_Tumor BreastCancer_Normal_vs_Tumor BreastCancer
 run_pair HomoSapiens_Melanoma_Normal     HomoSapiens_Melanoma_Tumor     Melanoma_Normal_vs_Tumor     Melanoma
