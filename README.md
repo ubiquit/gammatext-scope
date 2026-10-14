@@ -114,6 +114,20 @@ lifted onto each consensus. `scripts/prepare_inputs.sh` reconstructs them.
 | consensus | `bcftools consensus` 1.13 per chromosome | `bcftools consensus` 1.13 per chromosome, with `-c` chain files |
 | annotation liftover | `paftools.js liftover` on BED6 | CrossMap with the consensus chain files |
 
+### Known issue with the melanoma inputs
+
+The two COLO829 consensus genomes were not built symmetrically: the tumour
+consensus carries every heterozygous germline allele (ALT), the normal
+consensus carries none of them (REF), while homozygous germline alleles are
+applied on both. On chromosome 21 this adds ~36,000 heterozygous SNVs and
+~10,000 heterozygous indels to the tumour–normal difference against ~700
+somatic variants (normal–tumour alignment breakpoints: 6,820 on chr21 versus
+21 for the breast-cancer pair). All melanoma results therefore mostly measure
+germline heterozygosity; the normal consensus has to be rebuilt with the same
+rule as the tumour and the melanoma analyses re-run. The breast-cancer pair is
+unaffected (its normal derives from a haploid assembly; all variants are
+applied on both sides).
+
 ## Differences from the legacy implementation
 
 * All paths are configurable; nothing is hard-coded to the authors' drives.

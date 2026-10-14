@@ -19,9 +19,11 @@ namespace GammaTextScope.Tests
         [InlineData("BreastCancer", "Intergenic")]
         [InlineData("BreastCancer", "Gene")]
         [InlineData("BreastCancer", "WholeGenomeMerged")]
+        [InlineData("BreastCancer", "WholeGenome")]
         [InlineData("Melanoma", "Intergenic")]
         [InlineData("Melanoma", "Gene")]
         [InlineData("Melanoma", "WholeGenomeMerged")]
+        [InlineData("Melanoma", "WholeGenome")]
         public void DecayDfaReproducesSummaryAndGapSeries(string pair, string mode)
         {
             string outRoot = TestData.StageOutRoot($"dfa-{pair}-{mode}", new string[0]);
@@ -68,16 +70,18 @@ namespace GammaTextScope.Tests
         [InlineData("BreastCancer", 0, "Intergenic")]
         [InlineData("BreastCancer", 0, "Gene")]
         [InlineData("BreastCancer", 0, "WholeGenomeMerged")]
+        [InlineData("BreastCancer", 0, "WholeGenome")]
         [InlineData("Melanoma", 1, "Intergenic")]
         [InlineData("Melanoma", 1, "Gene")]
         [InlineData("Melanoma", 1, "WholeGenomeMerged")]
+        [InlineData("Melanoma", 1, "WholeGenome")]
         public void AlphaComparisonReproducesChromosome21(string pair, int which, string mode)
         {
             Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
             var samples = which == 0 ? BreastPair : MelanomaPair;
             bool merged = mode.EndsWith("Merged");
             var ft = System.Enum.Parse<FeatureType>(mode.Replace("Merged", ""));
-            string outRoot = TestData.StageOutRoot($"alpha-{pair}-{mode}", samples, FeatureType.Intergenic, FeatureType.Gene);
+            string outRoot = TestData.StageOutRoot($"alpha-{pair}-{mode}", samples, FeatureType.Intergenic, FeatureType.Gene, FeatureType.WholeGenome);
             TestData.UseOutRoot(outRoot, "21");
 
             new StopCodonAlphaComparison().Run(samples[0], samples[1], pair, ft, merged);
@@ -89,19 +93,21 @@ namespace GammaTextScope.Tests
         }
 
         [SkippableTheory]
-        [InlineData("HomoSapiens_BreastCancer_Normal")]
-        [InlineData("HomoSapiens_BreastCancer_Tumor")]
-        [Trait("Category", "Slow")]
-        public void ClassifyReproducesChromosome21Intergenic(string sample)
+        [InlineData("HomoSapiens_BreastCancer_Normal", "Intergenic")]
+        [InlineData("HomoSapiens_BreastCancer_Tumor", "Intergenic")]
+        [InlineData("HomoSapiens_BreastCancer_Tumor", "Gene")]
+        [InlineData("HomoSapiens_BreastCancer_Tumor", "WholeGenome")]
+        [InlineData("HomoSapiens_Melanoma_Normal", "WholeGenome")]
+        public void ClassifyReproducesChromosome21(string sample, string mode)
         {
             Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
-            string outRoot = TestData.StageOutRoot($"classify-{sample}", new string[0]);
+            var ft = System.Enum.Parse<FeatureType>(mode);
+            string outRoot = TestData.StageOutRoot($"classify-{sample}-{mode}", new string[0]);
             var cfg = TestData.UseOutRoot(outRoot, "21");
 
-            new WindowClassifier().RunSimplified(sample, cfg.WindowWidth, cfg.WordsPerWindow, FeatureType.Intergenic,
-                cfg.ClassificationDir(sample, FeatureType.Intergenic));
+            new WindowClassifier().RunSimplified(sample, cfg.WindowWidth, cfg.WordsPerWindow, ft, cfg.ClassificationDir(sample, ft));
 
-            string rel = $"{sample}/Experiment_{sample}_Intergenic_7000/WindowWidth1/chr21WW1_window_positions_indexLength.txt";
+            string rel = $"{sample}/Experiment_{sample}_{mode}_7000/WindowWidth1/chr21WW1_window_positions_indexLength.txt";
             // columns 1–5 (window, start, length, status, isAlpha) are what the experiments consume;
             // the legacy writer concatenated the two trailing diagnostic columns
             List<string> Key(string path) => TestData.Lines(path).Select(l => string.Join('\t', l.Split('\t').Take(5))).ToList();
