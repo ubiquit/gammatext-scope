@@ -644,7 +644,63 @@ namespace GammaTextScope
             return tokenizedProcessingString;
         }
 
+        /// <summary>
+        /// Returns the tokens of the next window: the shortest prefix of the stop-codon
+        /// tokenisation of sequence[lastStartPosition..] that has more than length*retry
+        /// tokens, ends in a non-empty token and extends past lastFinishIndex. If no such
+        /// prefix exists the whole remainder is returned with isEnd = true.
+        ///
+        /// Incremental re-implementation of <see cref="FindNextLengthWindowLegacy"/>: it
+        /// tokenises only as far as the window needs instead of splitting the entire
+        /// remainder of the chromosome for every window (which made the legacy scanner
+        /// quadratic in chromosome length). The tokenisation rule is that of
+        /// String.Split(new[]{"TAG","TAA","TGA"}, StringSplitOptions.None): scan left to
+        /// right, split at the first position where a stop codon starts, resume after it.
+        /// </summary>
         public static List<string> FindNextLengthWindow(string sequence, int lastStartPosition, ref int lastFinishIndex, int length, out bool isEnd, ref int retry, int windowWidth)
+        {
+            var tokens = new List<string>();
+            int minIndex = length * retry;
+            int tokenStart = lastStartPosition;
+            int n = sequence.Length;
+            int i = lastStartPosition;
+
+            while (i <= n - 3)
+            {
+                char a = sequence[i], b = sequence[i + 1], c = sequence[i + 2];
+                bool isStop = a == 'T' && ((b == 'A' && (c == 'A' || c == 'G')) || (b == 'G' && c == 'A'));
+                if (!isStop) { i++; continue; }
+
+                string token = sequence.Substring(tokenStart, i - tokenStart);
+                tokens.Add(token);
+                int index = tokens.Count - 1;
+                if (index >= minIndex && index > lastFinishIndex && token.Length > 0)
+                {
+                    lastFinishIndex += length; //TODO iffy (kept from the legacy implementation)
+                    isEnd = false;
+                    return tokens;
+                }
+
+                i += 3;
+                tokenStart = i;
+            }
+
+            // end of sequence: the trailing token is everything after the last stop codon
+            tokens.Add(sequence.Substring(tokenStart));
+            int last = tokens.Count - 1;
+            if (last >= minIndex && last > lastFinishIndex && tokens[last].Length > 0)
+            {
+                lastFinishIndex += length;
+                isEnd = false;
+                return tokens;
+            }
+
+            isEnd = true;
+            return tokens;
+        }
+
+        /// <summary>The original scanner, kept for the equivalence test.</summary>
+        public static List<string> FindNextLengthWindowLegacy(string sequence, int lastStartPosition, ref int lastFinishIndex, int length, out bool isEnd, ref int retry, int windowWidth)
         {
             string endString = sequence.Substring(lastStartPosition);
             var tokenizedProcessingString = Tokenizer.TokenizeOnStopCodons(endString, GenomeConstants.stopWords, false);

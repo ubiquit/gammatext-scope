@@ -92,9 +92,13 @@ harmonisation between tumour and normal; the WholeGenome tables shipped here
 were regenerated on 12 October 2026 from the current classifications with this
 code. One orphaned gap-series file from a March run was dropped.
 
-Runtime (one core, 2026 desktop): `classify` ≈ 75 s for chromosome 21, i.e.
-roughly 40 min per sample and mode genome-wide; the three experiments take
-seconds per chromosome.
+Runtime: `classify` is single-threaded per chromosome and its legacy window
+scanner is quadratic in chromosome length (it re-tokenises the remainder of
+the chromosome for every window), so chr21 takes ~1–2 min but chr1 ~50 min and
+a genome ~5–6 h in one process. Run chromosomes as parallel processes instead
+(`scripts/classify_parallel.sh`; one `--chromosomes` value each, ~2.5 GB RAM
+per process) and a sample finishes in about an hour. The three experiments
+take seconds per chromosome.
 
 ## Input provenance
 
@@ -113,6 +117,10 @@ lifted onto each consensus. `scripts/prepare_inputs.sh` reconstructs them.
 ## Differences from the legacy implementation
 
 * All paths are configurable; nothing is hard-coded to the authors' drives.
+* The window scanner tokenises incrementally instead of splitting the whole
+  remainder of the chromosome for every window. It is equivalence-tested
+  against the legacy scanner (`WindowScannerTests`) and reproduces the legacy
+  classification files of every chromosome it has been compared with.
 * The per-window PDF charts and `_DictionaryStats` dumps of the classification
   step are not produced (they are not consumed by any experiment).
 * In the classification index files the lexicon size and the per-window
