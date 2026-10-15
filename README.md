@@ -107,6 +107,23 @@ a genome ~5–6 h in one process. Run chromosomes as parallel processes instead
 per process) and a sample finishes in about an hour. The three experiments
 take seconds per chromosome.
 
+## Figures
+
+`figures/make_figures.py` renders the article figures from a reference dataset
+in `expected/` (matplotlib only):
+
+```bash
+python figures/make_figures.py --dataset v2      # -> figures/out/v2/
+```
+
+It produces Figure 1 (per-chromosome stop-codon difference; the breast-cancer
+panel alone and both cancers side by side), Figures 2–3 (chromosome 1
+DNA-scopes), Appendices 1–2 (plaited DNA-scopes of all chromosomes, npc-DNA
+and pc-DNA, three A4 pages each) and `tables.md` with the DFA summaries. The
+decay-dot rule and the centromere detection follow `DecayGapDfa` and
+`StopCodonAlphaComparison`; the dot counts per chromosome equal the DFA
+summaries. `figures/out/v2/` holds the rendered set used in the manuscript.
+
 ## Input provenance
 
 The sequences are pseudo-haploid consensus genomes built from public variant
