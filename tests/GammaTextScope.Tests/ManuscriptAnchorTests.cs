@@ -17,7 +17,7 @@ namespace GammaTextScope.Tests
         [InlineData("BreastCancer_Normal_vs_Tumor", "12", 471)]
         public void Figure1PerChromosomeDifferences(string pair, string chr, long expectedDelta)
         {
-            var rows = TestData.ChromosomeRows(TestData.Expected($"Tumor/{pair}/StopCodonDensity_Intergenic/{pair}_StopCodonDensity_100k_perChromosome.tsv"), chr);
+            var rows = TestData.ChromosomeRows(TestData.ExpectedV1($"Tumor/{pair}/StopCodonDensity_Intergenic/{pair}_StopCodonDensity_100k_perChromosome.tsv"), chr);
             long delta = rows.Sum(r => long.Parse(r.Split('\t')[4]) - long.Parse(r.Split('\t')[3]));
             Assert.Equal(expectedDelta, delta);
         }
@@ -27,7 +27,7 @@ namespace GammaTextScope.Tests
         [InlineData("Melanoma_Normal_vs_Tumor", 1099)]
         public void GenomeWideStopCodonDifferenceIntergenic(string pair, long expectedTotal)
         {
-            var rows = TestData.Lines(TestData.Expected($"Tumor/{pair}/StopCodonDensity_Intergenic/{pair}_StopCodonDensity_100k_perChromosome.tsv")).Skip(1);
+            var rows = TestData.Lines(TestData.ExpectedV1($"Tumor/{pair}/StopCodonDensity_Intergenic/{pair}_StopCodonDensity_100k_perChromosome.tsv")).Skip(1);
             long total = rows.Sum(r => long.Parse(r.Split('\t')[4]) - long.Parse(r.Split('\t')[3]));
             Assert.Equal(expectedTotal, total);
         }
@@ -45,7 +45,7 @@ namespace GammaTextScope.Tests
         [InlineData("Melanoma", "Gene", "TumorSide_Zipf", "0.525")]
         public void DfaAlphaValuesInTables2And3(string pair, string mode, string category, string expectedAlpha)
         {
-            var summary = TestData.DfaSummary(TestData.Expected($"Tumor/{pair}/DecayGapDFA_{mode}/DecayGapDFA_{pair}_Summary.txt"));
+            var summary = TestData.DfaSummary(TestData.ExpectedV1($"Tumor/{pair}/DecayGapDFA_{mode}/DecayGapDFA_{pair}_Summary.txt"));
             Assert.Equal(expectedAlpha, summary[category].Alpha);
         }
 
@@ -57,7 +57,7 @@ namespace GammaTextScope.Tests
         [InlineData("Melanoma", "TumorSide_Alfa", 12)]
         public void Table3AlfaDecayDotCountsInGeneMode(string pair, string category, int expectedDots)
         {
-            var summary = TestData.DfaSummary(TestData.Expected($"Tumor/{pair}/DecayGapDFA_Gene/DecayGapDFA_{pair}_Summary.txt"));
+            var summary = TestData.DfaSummary(TestData.ExpectedV1($"Tumor/{pair}/DecayGapDFA_Gene/DecayGapDFA_{pair}_Summary.txt"));
             Assert.Equal(expectedDots, summary[category].Dots);
         }
     }

@@ -48,7 +48,7 @@ namespace GammaTextScope.Tests
     public class DfaRegressionTests
     {
         private static string ExpectedDir =>
-            Path.GetFullPath(Path.Combine(System.AppContext.BaseDirectory, "..", "..", "..", "..", "..", "expected"));
+            Path.GetFullPath(Path.Combine(System.AppContext.BaseDirectory, "..", "..", "..", "..", "..", "expected", "v1"));
 
         [Theory]
         [InlineData("Tumor/BreastCancer/DecayGapDFA_Intergenic/GapSeries_NormalSide_Zipf.tsv", 0.4487)]

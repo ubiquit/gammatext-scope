@@ -66,9 +66,16 @@ Only `gene` features with `gene_type=protein_coding` are read from the GFF.
 
 ## Reproducing the article
 
-`expected/` holds the pipeline outputs the manuscript was built from (tables,
-DFA summaries and the per-window classifications of all four samples), so the
-experiments can be re-run and diffed without the multi-hour classification step:
+`expected/` holds two reference datasets — tables, DFA summaries and the
+per-window classifications of all four samples — so the experiments can be
+re-run and diffed without re-classifying:
+
+* `expected/v1` — the outputs the submitted manuscript (October 2026) was
+  built from. Kept for the record; its inputs have known construction defects
+  (see *Input provenance*).
+* `expected/v2` — the regenerated dataset: breast-cancer samples `*_v2`,
+  melanoma samples `*_v3`, pairs `BreastCancer_v2*` / `Melanoma_v3*`. This is
+  the dataset the revised manuscript uses.
 
 ```bash
 # Windows PowerShell / bash: see scripts/reproduce_article9.sh
@@ -85,12 +92,12 @@ rendering smoke tests. Status of the lift against the legacy outputs
 (chromosome 21, both cancers): `classify` reproduces the legacy window
 classification exactly; `density` and `alpha-compare` are byte-identical.
 
-Provenance of `expected/`: Intergenic and Gene outputs are the legacy runs of
-5 June / 15 September 2026. The legacy WholeGenome outputs (22 May 2026) were
-produced from classification files that predate the 27 May annotation
-harmonisation between tumour and normal; the WholeGenome tables shipped here
-were regenerated on 12 October 2026 from the current classifications with this
-code. One orphaned gap-series file from a March run was dropped.
+Provenance of `expected/v1`: Intergenic and Gene outputs are the legacy runs
+of 5 June / 15 September 2026; the `WholeGenomeMerged` and `WholeGenome`
+tables were regenerated on 12 October 2026 with this code from the legacy
+classifications (the legacy whole-genome run of 22 May predated the annotation
+change of 27 May). `expected/v2` was produced entirely with this code on
+15 October 2026 from the inputs built by `scripts/inputs/`.
 
 Runtime: `classify` is single-threaded per chromosome and its legacy window
 scanner is quadratic in chromosome length (it re-tokenises the remainder of
@@ -102,31 +109,29 @@ take seconds per chromosome.
 
 ## Input provenance
 
-The sequences are haplotype-1 consensus genomes built from public data on the
-Ensembl GRCh38 primary assembly; the annotation is GENCODE v44 (Ensembl 110)
-lifted onto each consensus. `scripts/prepare_inputs.sh` reconstructs them.
+The sequences are pseudo-haploid consensus genomes built from public variant
+data on GRCh38; the annotation is GENCODE v44 (Ensembl 110) lifted onto each
+consensus. `scripts/inputs/` contains the scripts exactly as run and a README
+with the construction rule.
 
 | | HCC1395 / HCC1395BL (breast cancer) | COLO829 / COLO829BL (melanoma) |
 |---|---|---|
 | normal variants | `paftools.js call` (minimap2 2.30) of NCBI assembly **GCA_021234545.1** (HCC1395BL_v1.0) against GRCh38 | ONT open data, **Clair3 1.0.4** germline calls |
 | tumour variants | SEQC2 high-confidence somatic **sSNV + sINDEL v1.2.1** (Fang et al. 2021) | ONT wf-somatic-variation, **ClairS 0.1.7**, PASS |
-| tumour VCF | germline minus somatic positions, plus somatic sites | germline minus somatic spans, plus somatic |
-| consensus | `bcftools consensus` 1.13 per chromosome | `bcftools consensus` 1.13 per chromosome, with `-c` chain files |
-| annotation liftover | `paftools.js liftover` on BED6 | CrossMap with the consensus chain files |
+| tumour VCF | germline minus somatic positions, plus somatic sites | the normal's germline records (same order) minus those overlapping a somatic span, plus somatic |
+| consensus | `bcftools consensus -H A` 1.13 per chromosome, both samples (ALT allele of every genotype) | same |
+| annotation liftover | `minimap2 -x asm5` consensus vs GRCh38, `paftools.js liftover -q 0 -l 1000 -d 1.1`, per sample | same |
+| consistency check | normal–tumour alignment breakpoints on chr21 = 21 (20 somatic indels) | 23 (22 somatic indels) |
 
-### Known issue with the melanoma inputs
-
-The two COLO829 consensus genomes were not built symmetrically: the tumour
-consensus carries every heterozygous germline allele (ALT), the normal
-consensus carries none of them (REF), while homozygous germline alleles are
-applied on both. On chromosome 21 this adds ~36,000 heterozygous SNVs and
-~10,000 heterozygous indels to the tumour–normal difference against ~700
-somatic variants (normal–tumour alignment breakpoints: 6,820 on chr21 versus
-21 for the breast-cancer pair). All melanoma results therefore mostly measure
-germline heterozygosity; the normal consensus has to be rebuilt with the same
-rule as the tumour and the melanoma analyses re-run. The breast-cancer pair is
-unaffected (its normal derives from a haploid assembly; all variants are
-applied on both sides).
+The dataset-v1 inputs (submitted manuscript) differed from this in three ways
+that are documented in `scripts/inputs/README.md`: the melanoma normal was
+built without heterozygous alleles while the tumour carried them; the melanoma
+tumour union ordered multi-allelic records differently from the normal, so
+`bcftools consensus` applied different alleles at ~1,200 indel sites per
+chromosome 21; and both breast-cancer samples used one annotation lifted, with
+the alignment direction inverted, onto an earlier tumour FASTA in a coordinate
+system up to ~100 kb off the analysed strings. The v2 construction removes all
+three; the consistency checks above are part of the scripts.
 
 ## Differences from the legacy implementation
 

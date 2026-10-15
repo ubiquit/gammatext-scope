@@ -65,7 +65,7 @@ namespace GammaTextScope.Tests
         [SkippableFact]
         public void IncrementalScannerMatchesLegacyOnRealChromosomePrefix()
         {
-            Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
+            Skip.IfNot(Dataset.V1.SequencesAvailable, "v1 sequence data not available under " + TestData.DataRoot);
             // 4 Mb from the middle of chr21 — the start of the chromosome is an unassembled N run without stop codons
             string file = Directory.GetFiles(Path.Combine(TestData.DataRoot, "HomoSapiens_BreastCancer_Normal"), "chr21.*").Single();
             var sb = new StringBuilder();

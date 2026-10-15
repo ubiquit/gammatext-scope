@@ -6,37 +6,37 @@ using GammaTextScope;
 namespace GammaTextScope.Tests
 {
     /// <summary>
-    /// Re-runs the pipeline and compares its output byte-for-byte with expected/.
-    /// decay-dfa only needs the tables in expected/ and always runs; the sequence
-    /// based steps run when the four samples are present under the data root.
+    /// Re-runs the pipeline and compares its output byte-for-byte with expected/ for
+    /// both reference datasets. decay-dfa only needs the tables in expected/ and always
+    /// runs; the sequence based steps run when the dataset's samples are present under
+    /// the data root (--data-root / GAMMATEXT_DATA).
     /// </summary>
     public class PipelineRegressionTests
     {
-        private static readonly string[] BreastPair = { "HomoSapiens_BreastCancer_Normal", "HomoSapiens_BreastCancer_Tumor" };
-        private static readonly string[] MelanomaPair = { "HomoSapiens_Melanoma_Normal", "HomoSapiens_Melanoma_Tumor" };
+        public static IEnumerable<object[]> DfaCases()
+        {
+            foreach (var v in new[] { "v1", "v2" })
+                foreach (var cancer in new[] { 0, 1 })
+                    foreach (var mode in new[] { "Intergenic", "Gene", "WholeGenome", "WholeGenomeMerged" })
+                        if (!(v == "v1" && mode == "WholeGenome"))   // v1 never had annotation-free whole-genome classifications
+                            yield return new object[] { v, cancer, mode };
+        }
 
         [Theory]
-        [InlineData("BreastCancer", "Intergenic")]
-        [InlineData("BreastCancer", "Gene")]
-        [InlineData("BreastCancer", "WholeGenomeMerged")]
-        [InlineData("BreastCancer", "WholeGenome")]
-        [InlineData("Melanoma", "Intergenic")]
-        [InlineData("Melanoma", "Gene")]
-        [InlineData("Melanoma", "WholeGenomeMerged")]
-        [InlineData("Melanoma", "WholeGenome")]
-        public void DecayDfaReproducesSummaryAndGapSeries(string pair, string mode)
+        [MemberData(nameof(DfaCases))]
+        public void DecayDfaReproducesSummaryAndGapSeries(string version, int cancer, string mode)
         {
-            string outRoot = TestData.StageOutRoot($"dfa-{pair}-{mode}", new string[0]);
+            var ds = Dataset.Get(version); string pair = ds.AlphaPair(cancer);
+            string outRoot = TestData.StageOutRoot(ds, $"dfa-{pair}-{mode}", new string[0]);
             TestData.UseOutRoot(outRoot);
             string scaRel = $"Tumor/{pair}/StopCodonAlphaComparison_{mode}";
             Directory.CreateDirectory(Path.Combine(outRoot, scaRel));
-            File.Copy(TestData.Expected($"{scaRel}/StopCodonAlpha_{pair}_AllChromosomes.tsv"),
-                      Path.Combine(outRoot, scaRel, $"StopCodonAlpha_{pair}_AllChromosomes.tsv"));
+            File.Copy(ds.Expected($"{scaRel}/StopCodonAlpha_{pair}_AllChromosomes.tsv"), Path.Combine(outRoot, scaRel, $"StopCodonAlpha_{pair}_AllChromosomes.tsv"));
 
             new DecayGapDfa().Run(pair, mode);
 
             string dfaRel = $"Tumor/{pair}/DecayGapDFA_{mode}";
-            foreach (var expectedFile in Directory.GetFiles(TestData.Expected(dfaRel)))
+            foreach (var expectedFile in Directory.GetFiles(ds.Expected(dfaRel)))
             {
                 string produced = Path.Combine(outRoot, dfaRel, Path.GetFileName(expectedFile));
                 Assert.True(File.Exists(produced), $"missing {produced}");
@@ -44,74 +44,91 @@ namespace GammaTextScope.Tests
             }
         }
 
-        [SkippableTheory]
-        [InlineData("BreastCancer_Normal_vs_Tumor", 0, "Intergenic")]
-        [InlineData("BreastCancer_Normal_vs_Tumor", 0, "Gene")]
-        [InlineData("BreastCancer_Normal_vs_Tumor", 0, "WholeGenome")]
-        [InlineData("Melanoma_Normal_vs_Tumor", 1, "Intergenic")]
-        public void DensityReproducesChromosome21(string pair, int which, string mode)
+        public static IEnumerable<object[]> DensityCases()
         {
-            Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
-            var samples = which == 0 ? BreastPair : MelanomaPair;
-            var ft = System.Enum.Parse<FeatureType>(mode);
-            string outRoot = TestData.StageOutRoot($"density-{pair}-{mode}", new string[0]);
-            TestData.UseOutRoot(outRoot, "21");
-
-            new StopCodonDensity().Run(samples[0], samples[1], pair, ft);
-
-            string rel = $"Tumor/{pair}/StopCodonDensity_{mode}/{pair}_StopCodonDensity_100k_perChromosome.tsv";
-            var produced = TestData.Lines(Path.Combine(outRoot, rel));
-            var expected = TestData.Lines(TestData.Expected(rel));
-            Assert.Equal(expected[0], produced[0]);
-            Assert.Equal(TestData.ChromosomeRows(TestData.Expected(rel), "21"), produced.Skip(1).ToList());
+            foreach (var v in new[] { "v1", "v2" })
+                foreach (var mode in new[] { "Intergenic", "Gene", "WholeGenome" })
+                    yield return new object[] { v, 0, mode };
+            yield return new object[] { "v1", 1, "Intergenic" };
+            yield return new object[] { "v2", 1, "Intergenic" };
+            yield return new object[] { "v2", 1, "WholeGenome" };
         }
 
         [SkippableTheory]
-        [InlineData("BreastCancer", 0, "Intergenic")]
-        [InlineData("BreastCancer", 0, "Gene")]
-        [InlineData("BreastCancer", 0, "WholeGenomeMerged")]
-        [InlineData("BreastCancer", 0, "WholeGenome")]
-        [InlineData("Melanoma", 1, "Intergenic")]
-        [InlineData("Melanoma", 1, "Gene")]
-        [InlineData("Melanoma", 1, "WholeGenomeMerged")]
-        [InlineData("Melanoma", 1, "WholeGenome")]
-        public void AlphaComparisonReproducesChromosome21(string pair, int which, string mode)
+        [MemberData(nameof(DensityCases))]
+        public void DensityReproducesChromosome21(string version, int cancer, string mode)
         {
-            Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
-            var samples = which == 0 ? BreastPair : MelanomaPair;
+            var ds = Dataset.Get(version);
+            Skip.IfNot(ds.SequencesAvailable, $"{version} sequence data not available under {TestData.DataRoot}");
+            var samples = ds.Samples(cancer); string pair = ds.DensityPair(cancer);
+            string outRoot = TestData.StageOutRoot(ds, $"density-{pair}-{mode}", new string[0]);
+            TestData.UseOutRoot(outRoot, "21");
+
+            new StopCodonDensity().Run(samples[0], samples[1], pair, System.Enum.Parse<FeatureType>(mode));
+
+            string rel = $"Tumor/{pair}/StopCodonDensity_{mode}/{pair}_StopCodonDensity_100k_perChromosome.tsv";
+            var produced = TestData.Lines(Path.Combine(outRoot, rel));
+            var expected = TestData.Lines(ds.Expected(rel));
+            Assert.Equal(expected[0], produced[0]);
+            Assert.Equal(TestData.ChromosomeRows(ds.Expected(rel), "21"), produced.Skip(1).ToList());
+        }
+
+        public static IEnumerable<object[]> AlphaCases()
+        {
+            foreach (var v in new[] { "v1", "v2" })
+                foreach (var cancer in new[] { 0, 1 })
+                    foreach (var mode in new[] { "Intergenic", "Gene", "WholeGenomeMerged", "WholeGenome" })
+                        if (!(v == "v1" && mode == "WholeGenome"))
+                            yield return new object[] { v, cancer, mode };
+        }
+
+        [SkippableTheory]
+        [MemberData(nameof(AlphaCases))]
+        public void AlphaComparisonReproducesChromosome21(string version, int cancer, string mode)
+        {
+            var ds = Dataset.Get(version);
+            Skip.IfNot(ds.SequencesAvailable, $"{version} sequence data not available under {TestData.DataRoot}");
+            var samples = ds.Samples(cancer); string pair = ds.AlphaPair(cancer);
             bool merged = mode.EndsWith("Merged");
             var ft = System.Enum.Parse<FeatureType>(mode.Replace("Merged", ""));
-            string outRoot = TestData.StageOutRoot($"alpha-{pair}-{mode}", samples, FeatureType.Intergenic, FeatureType.Gene, FeatureType.WholeGenome);
+            var staged = version == "v1" ? new[] { FeatureType.Intergenic, FeatureType.Gene } : new[] { FeatureType.Intergenic, FeatureType.Gene, FeatureType.WholeGenome };
+            string outRoot = TestData.StageOutRoot(ds, $"alpha-{pair}-{mode}", samples, staged);
             TestData.UseOutRoot(outRoot, "21");
 
             new StopCodonAlphaComparison().Run(samples[0], samples[1], pair, ft, merged);
 
             string rel = $"Tumor/{pair}/StopCodonAlphaComparison_{mode}/StopCodonAlpha_{pair}_chr21.tsv";
-            Assert.Equal(File.ReadAllText(TestData.Expected(rel)), File.ReadAllText(Path.Combine(outRoot, rel)));
+            Assert.Equal(File.ReadAllText(ds.Expected(rel)), File.ReadAllText(Path.Combine(outRoot, rel)));
             string all = $"Tumor/{pair}/StopCodonAlphaComparison_{mode}/StopCodonAlpha_{pair}_AllChromosomes.tsv";
-            Assert.Equal(TestData.ChromosomeRows(TestData.Expected(all), "chr21"), TestData.Lines(Path.Combine(outRoot, all)).Skip(1).ToList());
+            Assert.Equal(TestData.ChromosomeRows(ds.Expected(all), "chr21"), TestData.Lines(Path.Combine(outRoot, all)).Skip(1).ToList());
+        }
+
+        public static IEnumerable<object[]> ClassifyCases()
+        {
+            yield return new object[] { "v1", "HomoSapiens_BreastCancer_Normal", "Intergenic" };
+            yield return new object[] { "v1", "HomoSapiens_BreastCancer_Tumor", "Gene" };
+            yield return new object[] { "v2", "HomoSapiens_BreastCancer_Normal_v2", "Intergenic" };
+            yield return new object[] { "v2", "HomoSapiens_BreastCancer_Tumor_v2", "Gene" };
+            yield return new object[] { "v2", "HomoSapiens_Melanoma_Normal_v3", "Intergenic" };
+            yield return new object[] { "v2", "HomoSapiens_Melanoma_Tumor_v3", "WholeGenome" };
         }
 
         [SkippableTheory]
-        [InlineData("HomoSapiens_BreastCancer_Normal", "Intergenic")]
-        [InlineData("HomoSapiens_BreastCancer_Tumor", "Intergenic")]
-        [InlineData("HomoSapiens_BreastCancer_Tumor", "Gene")]
-        [InlineData("HomoSapiens_BreastCancer_Tumor", "WholeGenome")]
-        [InlineData("HomoSapiens_Melanoma_Normal", "WholeGenome")]
-        public void ClassifyReproducesChromosome21(string sample, string mode)
+        [MemberData(nameof(ClassifyCases))]
+        public void ClassifyReproducesChromosome21(string version, string sample, string mode)
         {
-            Skip.IfNot(TestData.SequencesAvailable, "sequence data not available under " + TestData.DataRoot);
+            var ds = Dataset.Get(version);
+            Skip.IfNot(ds.SequencesAvailable, $"{version} sequence data not available under {TestData.DataRoot}");
             var ft = System.Enum.Parse<FeatureType>(mode);
-            string outRoot = TestData.StageOutRoot($"classify-{sample}-{mode}", new string[0]);
+            string outRoot = TestData.StageOutRoot(ds, $"classify-{sample}-{mode}", new string[0]);
             var cfg = TestData.UseOutRoot(outRoot, "21");
 
             new WindowClassifier().RunSimplified(sample, cfg.WindowWidth, cfg.WordsPerWindow, ft, cfg.ClassificationDir(sample, ft));
 
             string rel = $"{sample}/Experiment_{sample}_{mode}_7000/WindowWidth1/chr21WW1_window_positions_indexLength.txt";
-            // columns 1–5 (window, start, length, status, isAlpha) are what the experiments consume;
-            // the legacy writer concatenated the two trailing diagnostic columns
+            // columns 1–5 (window, start, length, status, isAlpha) are what the experiments consume
             List<string> Key(string path) => TestData.Lines(path).Select(l => string.Join('\t', l.Split('\t').Take(5))).ToList();
-            Assert.Equal(Key(TestData.Expected(rel)), Key(Path.Combine(outRoot, rel)));
+            Assert.Equal(Key(ds.Expected(rel)), Key(Path.Combine(outRoot, rel)));
         }
     }
 }

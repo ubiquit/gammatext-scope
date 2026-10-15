@@ -31,7 +31,7 @@ namespace GammaTextScope.Tests
         [Fact]
         public void Figure1DifferenceBarChartRendersFromExpectedDensityTable()
         {
-            string table = TestData.Expected("Tumor/BreastCancer_Normal_vs_Tumor/StopCodonDensity_Intergenic/BreastCancer_Normal_vs_Tumor_StopCodonDensity_100k_perChromosome.tsv");
+            string table = TestData.ExpectedV1("Tumor/BreastCancer_Normal_vs_Tumor/StopCodonDensity_Intergenic/BreastCancer_Normal_vs_Tumor_StopCodonDensity_100k_perChromosome.tsv");
             var perChr = TestData.Lines(table).Skip(1).Select(l => l.Split('\t'))
                 .GroupBy(p => p[0]).ToDictionary(g => g.Key, g => g.Sum(p => long.Parse(p[4]) - long.Parse(p[3])));
             var labels = perChr.Keys.ToList();
@@ -48,7 +48,7 @@ namespace GammaTextScope.Tests
         [InlineData("Melanoma")]
         public void DnaScopeChartRendersFromExpectedChromosome1Table(string pair)
         {
-            string table = TestData.Expected($"Tumor/{pair}/StopCodonAlphaComparison_Intergenic/StopCodonAlpha_{pair}_chr1.tsv");
+            string table = TestData.ExpectedV1($"Tumor/{pair}/StopCodonAlphaComparison_Intergenic/StopCodonAlpha_{pair}_chr1.tsv");
             var rows = TestData.Lines(table).Skip(1).Select(l => l.Split('\t')).ToList();
             Assert.True(rows.Count > 500, "chr1 should have hundreds of windows");
 
