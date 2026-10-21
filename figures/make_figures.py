@@ -14,6 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
+from matplotlib.ticker import MaxNLocator
 
 DATASETS = {
     "v1": dict(bc_density="BreastCancer_Normal_vs_Tumor", bc_alpha="BreastCancer", mel_density="Melanoma_Normal_vs_Tumor", mel_alpha="Melanoma",
@@ -254,12 +255,12 @@ def dnascope(exp, ds, out, pair_key, sample_label, pair_ids, chrom, mode, name):
     ax = fig.add_subplot(gs[0]); ax_t = fig.add_subplot(gs[1]); dot_t = fig.add_subplot(gs[2]); ax_n = fig.add_subplot(gs[3]); dot_n = fig.add_subplot(gs[4])
     lo, hi = percentile(d, 2.5), percentile(d, 97.5)
     ax.axhspan(lo, hi, color=BAND, lw=0, zorder=0)
-    ylim = max(50, 4 * max(abs(lo), abs(hi)))
+    ylim = max(10, int(percentile([abs(v) for v in d], 99.5) + 0.999))   # per-panel scale: 99.5 % of |Δ| inside, floor ±10
     clipped = [max(-ylim, min(ylim, v)) for v in d]
     ax.plot(range(n), clipped, color="black", lw=0.8, zorder=2); ax.axhline(0, color=RED, lw=1, zorder=1)
     off = [(i, v) for i, v in enumerate(d) if abs(v) > ylim]
     for i, v in off: ax.plot(i, ylim if v > 0 else -ylim, marker="^" if v > 0 else "v", color=RED, ms=5, zorder=3)
-    ax.set_ylim(-ylim, ylim)
+    ax.set_ylim(-ylim, ylim); ax.yaxis.set_major_locator(MaxNLocator(integer=True))
     if off:
         fig.text(0.5, 0.875, "off scale (clipped, marked ▲▼): " + ", ".join(f"window {i + 1}: {v:+d}" for i, v in off[:6]) + (" …" if len(off) > 6 else ""),
                  ha="center", fontsize=10, color=RED)
@@ -291,7 +292,7 @@ def panel(fig, gs_cell, exp, ds, chrom, mode):
         rows = alpha_rows(exp, ds[pair_key], mode, chrom); d = rows["delta"]; n = len(d)
         a, bt, dt, bn, dn = axes[5 * k: 5 * k + 5]
         lo, hi = percentile(d, 2.5), percentile(d, 97.5)
-        ylim = max(50, 4 * max(abs(lo), abs(hi)))
+        ylim = max(5, int(percentile([abs(v) for v in d], 99.5) + 0.999))   # per-panel scale: 99.5 % of |Δ| inside, floor ±5
         a.axhspan(lo, hi, color=BAND, lw=0, zorder=0); a.axhline(0, color=RED, lw=0.7, zorder=1)
         off = []
         for i, mn, mx in grouped_minmax(d):
@@ -299,8 +300,9 @@ def panel(fig, gs_cell, exp, ds, chrom, mode):
             a.plot([i + 5, i + 5], [cmn, cmx], color="black", lw=1.1, solid_capstyle="butt", zorder=2)
             if mx > ylim: a.plot(i + 5, ylim, marker="^", color=RED, ms=3, zorder=3); off.append(mx)
             if mn < -ylim: a.plot(i + 5, -ylim, marker="v", color=RED, ms=3, zorder=3); off.append(mn)
-        if off: notes.append(f"{label} {max(off, key=abs):+d}")
-        a.set_xlim(-0.5, n - 0.5); a.set_ylim(-ylim, ylim); a.set_xticks([]); a.set_yticks([])
+        if off and max(abs(v) for v in off) >= 50: notes.append(f"{label} {max(off, key=abs):+d}")
+        a.set_xlim(-0.5, n - 0.5); a.set_ylim(-ylim, ylim); a.set_xticks([])
+        a.set_yticks([-ylim, 0, ylim]); a.set_yticklabels([f"−{ylim}", "0", f"+{ylim}"], fontsize=5, color="#666"); a.tick_params(axis="y", length=2, pad=1)
         a.set_ylabel(label, rotation=0, ha="right", va="center", fontsize=9, weight="bold")
         for sp in ("top", "right", "bottom"): a.spines[sp].set_visible(False)
         a.spines["left"].set_color("#aaa")
@@ -325,7 +327,7 @@ def appendix(exp, ds, out, mode, name):
         fig.suptitle(f"Stop-codon delta and text qualification — {MODE_LABEL[mode]} mode", fontsize=14, weight="bold", x=0.03, ha="left", y=0.975)
         sub = ("Melanoma (MEL, COLO829 / COLO829BL) over breast cancer (BC, HCC1395 / HCC1395BL). "
                f"{MODE_LABEL[mode]} mode, 7 000-γword windows (≈133 000 nt). Bars: min–max of Δ stop-codons (Tumour − Normal) in 10-window groups "
-               "(no peak lost); shaded band: central 95 % of Δ; red marks and notes: values beyond the panel range; orange: centromere "
+               "(no peak lost); the vertical scale is set per panel so that 99.5 % of the windows fall inside it (tick labels give ±range); shaded band: central 95 % of Δ; red marks: values beyond the panel range, notes: peaks beyond ±50; orange: centromere "
                "(GRCh38 cytoband position mapped into the window index through the gene mask). "
                f"Page {p} of 3.")
         fig.text(0.03, 0.952, chr(10).join(textwrap.wrap(sub, 128)), fontsize=7.5, color="#444", va="top", linespacing=1.4)
