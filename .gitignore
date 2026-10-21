@@ -8,3 +8,5 @@ TestResults/
 figures/__pycache__/
 figures/.venv/
 *.pyc
+
+figures/.cache/

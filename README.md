@@ -120,9 +120,14 @@ It produces Figure 1 (per-chromosome stop-codon difference; the breast-cancer
 panel alone and both cancers side by side), Figures 2–3 (chromosome 1
 DNA-scopes), Appendices 1–2 (plaited DNA-scopes of all chromosomes, npc-DNA
 and pc-DNA, three A4 pages each) and `tables.md` with the DFA summaries. The
-decay-dot rule and the centromere detection follow `DecayGapDfa` and
-`StopCodonAlphaComparison`; the dot counts per chromosome equal the DFA
-summaries. `figures/out/v2/` holds the rendered set used in the manuscript.
+decay-dot rule follows `DecayGapDfa` (the dot counts per chromosome equal
+the DFA summaries). The centromere band is the GRCh38 centromere
+(`CentromereRegions.cs`) mapped into the window index through the normal
+sample's gene mask with the same interval logic as `FilteredToRawMapper`;
+this needs the sample data under `--data-root` (or `GAMMATEXT_DATA`) and
+falls back to the legacy zero-stop-window heuristic without it.
+`figures/out/v1/` and `figures/out/v2/` hold the rendered sets for the two
+datasets; the v1 set reproduces the content of the submitted figures.
 
 ## Input provenance
 

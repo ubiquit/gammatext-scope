@@ -8,7 +8,7 @@ Appendix_1 (plaited DNA-scopes, npc-DNA, 3 A4 pages) and Appendix_2 (pc-DNA),
 plus tables.md with the DFA summaries. Decay-dot and centromere logic mirrors
 DecayGapDfa / StopCodonAlphaComparison.FindCentromereWindowRange in the C# code.
 """
-import argparse, csv, os, textwrap
+import argparse, bisect, csv, glob, json, os, textwrap
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -16,8 +16,10 @@ from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 
 DATASETS = {
-    "v1": dict(bc_density="BreastCancer_Normal_vs_Tumor", bc_alpha="BreastCancer", mel_density="Melanoma_Normal_vs_Tumor", mel_alpha="Melanoma"),
-    "v2": dict(bc_density="BreastCancer_v2_Normal_vs_Tumor", bc_alpha="BreastCancer_v2", mel_density="Melanoma_v3_Normal_vs_Tumor", mel_alpha="Melanoma_v3"),
+    "v1": dict(bc_density="BreastCancer_Normal_vs_Tumor", bc_alpha="BreastCancer", mel_density="Melanoma_Normal_vs_Tumor", mel_alpha="Melanoma",
+               bc_normal="HomoSapiens_BreastCancer_Normal", mel_normal="HomoSapiens_Melanoma_Normal"),
+    "v2": dict(bc_density="BreastCancer_v2_Normal_vs_Tumor", bc_alpha="BreastCancer_v2", mel_density="Melanoma_v3_Normal_vs_Tumor", mel_alpha="Melanoma_v3",
+               bc_normal="HomoSapiens_BreastCancer_Normal_v2", mel_normal="HomoSapiens_Melanoma_Normal_v3"),
 }
 CHROMS = [str(i) for i in range(1, 23)] + ["X", "Y"]
 MODE_LABEL = {"Intergenic": "npc-DNA (intergenic)", "Gene": "pc-DNA (gene bodies)", "WholeGenome": "whole DNA"}
@@ -31,6 +33,8 @@ CENTROMERE = {"1": (121_700_000, 125_100_000), "2": (91_800_000, 96_000_000), "3
               "18": (15_400_000, 21_500_000), "19": (24_200_000, 28_100_000), "20": (26_200_000, 30_400_000), "21": (0, 13_000_000),
               "22": (0, 17_400_000), "X": (58_100_000, 63_800_000), "Y": (10_300_000, 10_600_000)}
 SLIDING, MIN_DELTA = 10, 3
+DATA_ROOT = os.environ.get("GAMMATEXT_DATA", r"D:\Files\Stream")   # sequence/annotation root (only needed for exact centromere mapping)
+CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cache")
 
 
 # ---------------------------------------------------------------- data
@@ -66,7 +70,93 @@ def decay_dots(normal, tumour):
             else: t_side.append((c, "alfa" if ta > tz else "zipf"))
     return n_side, t_side
 
-def centromere_ranges(chrom, rows, mode="Intergenic"):
+# ---------------------------------------------------------------- centromere: exact mapping through the gene mask
+def raw_length(sample, chrom):
+    """Character count of the chromosome sequence file (newlines excluded), cached."""
+    os.makedirs(CACHE, exist_ok=True); cp = os.path.join(CACHE, "chromosome_lengths.json")
+    cache = json.load(open(cp)) if os.path.exists(cp) else {}
+    key = f"{sample}/chr{chrom}"
+    if key not in cache:
+        files = glob.glob(os.path.join(DATA_ROOT, sample, f"chr{chrom}.*"))
+        if not files: return None
+        size = os.path.getsize(files[0]); nl = 0
+        with open(files[0], "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 24), b""): nl += chunk.count(b"\n")
+        cache[key] = size - nl; json.dump(cache, open(cp, "w"), indent=0)
+    return cache[key]
+
+_mask_cache = {}
+def mask_intervals(sample, chrom, gene_mode):
+    """(filteredStart, rawStart, length) runs of the filtered sequence, exactly as FilteredToRawMapper.Build in the
+    C# code: protein-coding 'gene' features, sorted, first gene dropped (legacy FindNextGene), overlaps merged,
+    coordinates in the legacy index space (rawStart = StartPosition - 2)."""
+    key = (sample, chrom, gene_mode)
+    if key in _mask_cache: return _mask_cache[key]
+    files = glob.glob(os.path.join(DATA_ROOT, sample + "_GeneInfo", "*"))
+    total = raw_length(sample, chrom)
+    if not files or total is None: _mask_cache[key] = None; return None
+    genes = []
+    for f in files:
+        with open(f, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                c = line.rstrip("\n").split("\t")
+                if len(c) < 9 or c[2] != "gene" or c[0] not in (f"chr{chrom}", chrom): continue
+                attrs = dict(kv.split("=", 1) for kv in c[8].split(";") if "=" in kv)
+                gt = attrs.get("gene_biotype") or attrs.get("gene_type") or attrs.get("biotype")
+                if gt == "protein_coding": genes.append((int(c[3]) - 1, int(c[4]) - 1))
+    genes.sort(); genes = genes[1:]
+    merged = []
+    for st, en in genes:
+        if merged and st <= merged[-1][1] + 1: merged[-1][1] = max(merged[-1][1], en)
+        else: merged.append([st, en])
+    iv = []; fpos = 0
+    if gene_mode:
+        for gs, ge in merged:
+            rs, ln = gs - 2, ge - gs + 1
+            if rs < 0: ln += rs; rs = 0
+            if rs + ln > total: ln = total - rs
+            if ln > 0: iv.append((fpos, rs, ln)); fpos += ln
+    else:
+        prev = 1
+        for gs, ge in merged:
+            a, b = prev + 1, gs - 1
+            if b >= a:
+                rs, ln = a - 2, b - a + 1
+                if rs < 0: ln += rs; rs = 0
+                if ln > 0: iv.append((fpos, rs, ln)); fpos += ln
+            prev = ge
+        a, b = prev + 1, total + 1
+        if b >= a:
+            rs, ln = a - 2, b - a + 1
+            if rs < 0: ln += rs; rs = 0
+            if rs + ln > total: ln = total - rs
+            if ln > 0: iv.append((fpos, rs, ln)); fpos += ln
+    _mask_cache[key] = iv; return iv
+
+def raw_to_filtered(iv, p):
+    """Filtered position of raw position p; a position inside a removed region maps to the next kept run."""
+    starts = [rs for _, rs, _ in iv]
+    k = bisect.bisect_right(starts, p) - 1
+    if k >= 0 and p < iv[k][1] + iv[k][2]: return iv[k][0] + (p - iv[k][1])
+    return iv[k + 1][0] if k + 1 < len(iv) else iv[-1][0] + iv[-1][2]
+
+def centromere_ranges(chrom, rows, mode="Intergenic", sample=None):
+    """GRCh38 centromere (UCSC cytoband acen, CentromereRegions.cs) mapped exactly into the window index space
+    through the normal sample's gene mask; falls back to the legacy heuristic when the sample data is absent."""
+    if sample and chrom in CENTROMERE and rows["start"]:
+        cs, ce = CENTROMERE[chrom]; fs = None
+        if mode == "WholeGenome": fs, fe = cs, ce
+        else:
+            iv = mask_intervals(sample, chrom, mode == "Gene")
+            if iv: fs, fe = raw_to_filtered(iv, cs), raw_to_filtered(iv, ce)
+        if fs is not None:
+            win = list(zip(rows["start"], rows["length"]))
+            idx = [i for i, (st, ln) in enumerate(win) if st < fe and st + ln > fs] if fe > fs else \
+                  [i for i, (st, ln) in enumerate(win) if st <= fs < st + ln]
+            if idx: return [(idx[0], idx[-1])]
+    return centromere_ranges_heuristic(chrom, rows, mode)
+
+def centromere_ranges_heuristic(chrom, rows, mode="Intergenic"):
     """Centromere window ranges (inclusive index pairs), after FindCentromereWindowRange in the C# code.
     Pass 1: windows in which the tumour has no stop codons (unassembled satellite / N runs), each run expanded
     over neighbours with a tumour/normal stop-codon ratio outside 0.5–2.0. Unlike the legacy chart, which
@@ -173,8 +263,8 @@ def dnascope(exp, ds, out, pair_key, sample_label, pair_ids, chrom, mode, name):
     if off:
         fig.text(0.5, 0.875, "off scale (clipped, marked ▲▼): " + ", ".join(f"window {i + 1}: {v:+d}" for i, v in off[:6]) + (" …" if len(off) > 6 else ""),
                  ha="center", fontsize=10, color=RED)
-    for cen in centromere_ranges(chrom, rows, mode):
-        for a in (ax, ax_t, dot_t, ax_n, dot_n): a.axvspan(cen[0] - 0.5, cen[1] + 0.5, color=AMBER, alpha=0.9, lw=0, zorder=4)
+    for cen in centromere_ranges(chrom, rows, mode, ds[pair_key.replace("_alpha", "_normal")]):
+        for a in (ax, ax_t, dot_t, ax_n, dot_n): a.axvspan(cen[0] - 0.5, cen[1] + 0.5, color=AMBER, alpha=0.4, lw=0, zorder=4)
     ax.set_xlim(-0.5, n - 0.5); ax.set_xticks([]); ax.set_ylabel("Δ stop-codons\n(Tumour − Normal)", fontsize=12)
     ax.grid(axis="y", ls=":", alpha=0.5); ax.spines["top"].set_visible(False); ax.spines["right"].set_visible(False)
     draw_bands(ax_t, ax_n, rows, dot_t, dot_n, dot_size=18)
@@ -214,8 +304,8 @@ def panel(fig, gs_cell, exp, ds, chrom, mode):
         a.set_ylabel(label, rotation=0, ha="right", va="center", fontsize=9, weight="bold")
         for sp in ("top", "right", "bottom"): a.spines[sp].set_visible(False)
         a.spines["left"].set_color("#aaa")
-        for cen in centromere_ranges(chrom, rows, mode):
-            for ax_ in (a, bt, dt, bn, dn): ax_.axvspan(cen[0] - 0.5, cen[1] + 0.5, color=AMBER, alpha=0.9, lw=0, zorder=4)
+        for cen in centromere_ranges(chrom, rows, mode, ds[pair_key.replace("_alpha", "_normal")]):
+            for ax_ in (a, bt, dt, bn, dn): ax_.axvspan(cen[0] - 0.5, cen[1] + 0.5, color=AMBER, alpha=0.4, lw=0, zorder=4)
         draw_bands(bt, bn, rows, dt, dn, dot_size=6)
         bt.set_ylabel("T", rotation=0, ha="right", va="center", fontsize=7); bn.set_ylabel("N", rotation=0, ha="right", va="center", fontsize=7)
     return notes, n
@@ -236,7 +326,7 @@ def appendix(exp, ds, out, mode, name):
         sub = ("Melanoma (MEL, COLO829 / COLO829BL) over breast cancer (BC, HCC1395 / HCC1395BL). "
                f"{MODE_LABEL[mode]} mode, 7 000-γword windows (≈133 000 nt). Bars: min–max of Δ stop-codons (Tumour − Normal) in 10-window groups "
                "(no peak lost); shaded band: central 95 % of Δ; red marks and notes: values beyond the panel range; orange: centromere "
-               "(from the alignment, or the GRCh38 cytoband position mapped proportionally in npc-DNA mode). "
+               "(GRCh38 cytoband position mapped into the window index through the gene mask). "
                f"Page {p} of 3.")
         fig.text(0.03, 0.952, chr(10).join(textwrap.wrap(sub, 128)), fontsize=7.5, color="#444", va="top", linespacing=1.4)
         fig.legend(handles=legend_handles(), loc="lower center", ncol=3, fontsize=7.5, frameon=False, bbox_to_anchor=(0.5, 0.008))
@@ -267,7 +357,9 @@ def percentile(values, p):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--dataset", default="v2"); ap.add_argument("--expected", default=os.path.join(os.path.dirname(__file__), "..", "expected"))
-    ap.add_argument("--out", default=None); args = ap.parse_args()
+    ap.add_argument("--out", default=None); ap.add_argument("--data-root", default=None); args = ap.parse_args()
+    global DATA_ROOT
+    if args.data_root: DATA_ROOT = args.data_root
     ds = DATASETS[args.dataset]; exp = os.path.join(args.expected, args.dataset); out = args.out or os.path.join(os.path.dirname(__file__), "out", args.dataset)
     os.makedirs(out, exist_ok=True)
     figure_1_both(exp, ds, out)
