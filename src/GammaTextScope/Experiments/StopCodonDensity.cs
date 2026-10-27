@@ -72,7 +72,7 @@ namespace GammaTextScope
 
             // ---------- write per-chromosome density ----------
             string perChrPath = Path.Combine(outDir, $"{pairName}_StopCodonDensity_100k_perChromosome.tsv");
-            using (var sw = new StreamWriter(perChrPath))
+            using (var sw = new StreamWriter(perChrPath) { NewLine = GenomeConstants.OutputNewLine })
             {
                 sw.WriteLine("Chromosome\tBinStart\tBinEnd\tNormal_count\tTumor_count\tNormal_trials\tTumor_trials\tNormal_rate_per100k\tTumor_rate_per100k\tDelta_per100k\tRate_ratio");
                 foreach (var chr in perChr.Keys.OrderBy(NaturalChrOrderKey))
@@ -99,7 +99,7 @@ namespace GammaTextScope
 
             // ---------- genome-wide bin summary ----------
             string sumPath = Path.Combine(outDir, $"{pairName}_StopCodonDensity_100k_genomeSummary.tsv");
-            using (var sw = new StreamWriter(sumPath))
+            using (var sw = new StreamWriter(sumPath) { NewLine = GenomeConstants.OutputNewLine })
             {
                 sw.WriteLine("BinStart\tBinEnd\tNormal_count\tTumor_count\tNormal_trials\tTumor_trials\tNormal_rate_per100k\tTumor_rate_per100k\tDelta_per100k\tRate_ratio");
                 var allBinIdx = perChr.Values.SelectMany(d => d.Keys).Distinct().OrderBy(i => i);
@@ -170,7 +170,7 @@ namespace GammaTextScope
             BenjaminiHochbergInPlace(tests);
 
             string diffPath = Path.Combine(outDir, $"{pairName}_StopCodonDensity_100k_diff.tsv");
-            using (var sw = new StreamWriter(diffPath))
+            using (var sw = new StreamWriter(diffPath) { NewLine = GenomeConstants.OutputNewLine })
             {
                 sw.WriteLine("Chromosome\tBinStart\tBinEnd\tNormal_count\tTumor_count\tNormal_trials\tTumor_trials\tNormal_rate_per100k\tTumor_rate_per100k\tDelta_per100k\tRate_ratio\tZ\tP\tQ");
                 foreach (var r in tests.OrderBy(x => x.Q).ThenByDescending(x => Math.Abs(x.Delta100k)))
@@ -178,7 +178,7 @@ namespace GammaTextScope
             }
 
             string sigPath = Path.Combine(outDir, $"{pairName}_StopCodonDensity_100k_significant.tsv");
-            using (var sw = new StreamWriter(sigPath))
+            using (var sw = new StreamWriter(sigPath) { NewLine = GenomeConstants.OutputNewLine })
             {
                 sw.WriteLine("Chromosome\tBinStart\tBinEnd\tNormal_rate_per100k\tTumor_rate_per100k\tDelta_per100k\tRate_ratio\tNormal_count\tTumor_count\tNormal_trials\tTumor_trials\tZ\tP\tQ");
                 foreach (var r in tests.OrderBy(x => x.Chr).ThenBy(x => x.BinStart))

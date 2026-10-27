@@ -24,9 +24,6 @@ namespace GammaTextScope
 
             var geneIndex = SequenceHelper.ReadGeneIndexFromStream(PipelineConfig.Default.StreamDir(species + "_GeneInfo"), featureType);
 
-            if (!SequenceHelper.TestCreateGeneticDistances() || !SequenceHelper.TestCreateGeneticTextNew())
-                throw new Exception("genetic distance algorithm faliure");
-
             foreach (string path in paths)
             {
                 Dictionary<string, List<Tuple<string, int>>> WordMapping = new Dictionary<string, List<Tuple<string, int>>>();
@@ -103,7 +100,7 @@ namespace GammaTextScope
                         var lexicon = GetLexicon(tokenized).Count;
                         windowName = "Q_" + windowName;
                         int length = SequenceHelper.GetTokenizedSequenceLength(tokenizedWithEmptyPos, isEnd);
-                        positionString += windowName + "\t" + lastStartPosition + "\t" + length + "\tQUALIFIED\t" + isQualifiedDoc.Item1 + "\t" + lexicon + "\t" + stopWatch.Elapsed.TotalMilliseconds + Environment.NewLine;
+                        positionString += windowName + "\t" + lastStartPosition + "\t" + length + "\tQUALIFIED\t" + isQualifiedDoc.Item1 + "\t" + lexicon + "\t" + stopWatch.Elapsed.TotalMilliseconds + GenomeConstants.OutputNewLine;
                         isPrintableWindow = true;
                         isNullableWindow = true;
                     }
@@ -112,7 +109,7 @@ namespace GammaTextScope
                         windowName = "U_" + windowName;
                         int length = SequenceHelper.GetTokenizedSequenceLength(tokenizedWithEmptyPos, isEnd); // using previous to retain last window
                         var lexicon = GetLexicon(tokenized).Count;
-                        positionString += windowName + "\t" + lastStartPosition + "\t" + length + "\tUNQUALIFIED\t\t" + lexicon + "\t" + stopWatch.Elapsed.TotalMilliseconds + Environment.NewLine;
+                        positionString += windowName + "\t" + lastStartPosition + "\t" + length + "\tUNQUALIFIED\t\t" + lexicon + "\t" + stopWatch.Elapsed.TotalMilliseconds + GenomeConstants.OutputNewLine;
                         lastStartPosition += (length);
                         isPrintableWindow = false;
                         isNullableWindow = true;
@@ -144,7 +141,7 @@ namespace GammaTextScope
                 }
 
                 //writing indow positions for chromosome
-                using System.IO.StreamWriter sw = new System.IO.StreamWriter(Path.Combine(printpath, chromosome + "WW" + windowWidth + "_window_positions_indexLength.txt"));
+                using System.IO.StreamWriter sw = new System.IO.StreamWriter(Path.Combine(printpath, chromosome + "WW" + windowWidth + "_window_positions_indexLength.txt")) { NewLine = GenomeConstants.OutputNewLine };
                 sw.WriteLine(positionString);
             }
         }

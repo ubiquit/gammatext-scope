@@ -632,7 +632,7 @@ namespace GammaTextScope
 
         private static void WriteTsv(List<WindowRow> rows, string path, bool includeChromosomeColumn)
         {
-            using var sw = new StreamWriter(path);
+            using var sw = new StreamWriter(path) { NewLine = GenomeConstants.OutputNewLine };
 
             if (includeChromosomeColumn)
                 sw.WriteLine("Chr\tWindow\tStartPos\tLength\tNormal_Class\tTumor_Class\tNormal_StopCodons\tTumor_StopCodons\tDelta");

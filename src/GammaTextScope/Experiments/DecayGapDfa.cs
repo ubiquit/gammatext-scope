@@ -117,7 +117,7 @@ namespace GammaTextScope
 
             // Write summary
             string summaryPath = Path.Combine(outDir, $"DecayGapDFA_{pairName}_Summary.txt");
-            File.WriteAllText(summaryPath, string.Join(Environment.NewLine, results));
+            File.WriteAllText(summaryPath, string.Join(GenomeConstants.OutputNewLine, results));
             Console.WriteLine($"  DecayGapDFA done. Summary: {summaryPath}");
         }
 
@@ -143,7 +143,7 @@ namespace GammaTextScope
             var gapLines = new List<string> { "GapIndex\tGapLength" };
             for (int i = 0; i < gaps.Count; i++)
                 gapLines.Add($"{i + 1}\t{gaps[i]:F0}");
-            File.WriteAllText(gapPath, string.Join(Environment.NewLine, gapLines));
+            File.WriteAllText(gapPath, string.Join(GenomeConstants.OutputNewLine, gapLines));
 
             // Run DFA
             double alpha = -1000;

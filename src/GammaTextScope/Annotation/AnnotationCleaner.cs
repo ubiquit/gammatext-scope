@@ -38,7 +38,7 @@ namespace GammaTextScope
                     //for beggining of file
                     if (values[0].StartsWith("#"))
                     {
-                        sb.Append(line + Environment.NewLine);
+                        sb.Append(line + GenomeConstants.OutputNewLine);
                         continue;
                     }
                     var acc = dsList.seq.FirstOrDefault(x => x.acc.Equals(values[0]));
@@ -84,7 +84,7 @@ namespace GammaTextScope
                     sb.Append("\t");
             }
 
-            sb.Append(Environment.NewLine);
+            sb.Append(GenomeConstants.OutputNewLine);
 
             return sb.ToString();
         }

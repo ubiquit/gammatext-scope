@@ -173,6 +173,9 @@ three; the consistency checks above are part of the scripts.
   article does not use it.
 * Classification values in the tables keep the legacy spellings `alfa`,
   `zipf`, `ikke` so that outputs stay byte-comparable with `expected/`.
+* Every output file is written with CRLF line endings and invariant-culture
+  number formatting on every platform, so a run on Linux or on a machine with a
+  non-English locale stays byte-identical with `expected/`.
 
 ## Licence
 
