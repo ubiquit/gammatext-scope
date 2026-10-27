@@ -8,7 +8,7 @@ Appendix_1 (plaited DNA-scopes, npc-DNA, 3 A4 pages) and Appendix_2 (pc-DNA),
 plus tables.md with the DFA summaries. Decay-dot and centromere logic mirrors
 DecayGapDfa / StopCodonAlphaComparison.FindCentromereWindowRange in the C# code.
 """
-import argparse, bisect, csv, glob, json, os, textwrap
+import argparse, bisect, csv, glob, json, math, os, textwrap
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -253,17 +253,19 @@ def dnascope(exp, ds, out, pair_key, sample_label, pair_ids, chrom, mode, name):
     fig = plt.figure(figsize=(12.5, 5.9), dpi=200)
     gs = fig.add_gridspec(5, 1, height_ratios=[10, 1.1, 0.5, 1.1, 0.5], hspace=0.08, left=0.09, right=0.985, top=0.85, bottom=0.235)
     ax = fig.add_subplot(gs[0]); ax_t = fig.add_subplot(gs[1]); dot_t = fig.add_subplot(gs[2]); ax_n = fig.add_subplot(gs[3]); dot_n = fig.add_subplot(gs[4])
-    lo, hi = percentile(d, 2.5), percentile(d, 97.5)
+    ylim, lo, hi = panel_scale(d, 10)
     ax.axhspan(lo, hi, color=BAND, lw=0, zorder=0)
-    ylim = max(10, int(percentile([abs(v) for v in d], 99.5) + 0.999))   # per-panel scale: 99.5 % of |Δ| inside, floor ±10
     clipped = [max(-ylim, min(ylim, v)) for v in d]
     ax.plot(range(n), clipped, color="black", lw=0.8, zorder=2); ax.axhline(0, color=RED, lw=1, zorder=1)
     off = [(i, v) for i, v in enumerate(d) if abs(v) > ylim]
     for i, v in off: ax.plot(i, ylim if v > 0 else -ylim, marker="^" if v > 0 else "v", color=RED, ms=5, zorder=3)
     ax.set_ylim(-ylim, ylim); ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.set_yticks(sorted({t for t in ax.get_yticks() if abs(t) <= 0.8 * ylim} | {-ylim, ylim}))
     if off:
-        fig.text(0.5, 0.875, "off scale (clipped, marked ▲▼): " + ", ".join(f"window {i + 1}: {v:+d}" for i, v in off[:6]) + (" …" if len(off) > 6 else ""),
-                 ha="center", fontsize=10, color=RED)
+        major = [(i, v) for i, v in off if abs(v) > 50]; minor = len(off) - len(major)
+        txt = ", ".join(f"window {i + 1}: {v:+d}" for i, v in major[:6]) + (" …" if len(major) > 6 else "")
+        if minor: txt += (", " if txt else "") + f"{minor} further window{'s' if minor > 1 else ''} between ±{ylim} and ±50"
+        fig.text(0.5, 0.875, "clipped (marked ▲▼): " + txt, ha="center", fontsize=10, color=RED)
     for cen in centromere_ranges(chrom, rows, mode, ds[pair_key.replace("_alpha", "_normal")]):
         for a in (ax, ax_t, dot_t, ax_n, dot_n): a.axvspan(cen[0] - 0.5, cen[1] + 0.5, color=AMBER, alpha=0.4, lw=0, zorder=4)
     ax.set_xlim(-0.5, n - 0.5); ax.set_xticks([]); ax.set_ylabel("Δ stop-codons\n(Tumour − Normal)", fontsize=12)
@@ -273,7 +275,8 @@ def dnascope(exp, ds, out, pair_key, sample_label, pair_ids, chrom, mode, name):
     ax_n.set_ylabel("Normal", rotation=0, ha="right", va="center", fontsize=12, weight="bold")
     dot_n.set_xticks(range(0, n, 100)); dot_n.set_xticklabels([str(x) for x in range(0, n, 100)], fontsize=10); dot_n.set_xlabel("Window index", fontsize=12)
     fig.suptitle(f"Stop-codon delta and text qualification — {sample_label} chr{chrom} ({MODE_LABEL[mode]} mode)", fontsize=15, weight="bold", y=0.975)
-    fig.text(0.5, 0.91, f"{pair_ids} · {n} windows · 7 000 γwords per window (≈133 000 nt)", ha="center", fontsize=11, color="#555")
+    fig.text(0.5, 0.91, f"{pair_ids} · {n} windows · 7 000 γwords per window (≈133 000 nt) · y-range ±{ylim} = 4 × central-95 % band (shaded)",
+             ha="center", fontsize=11, color="#555")
     fig.legend(handles=legend_handles(), loc="lower center", ncol=3, fontsize=10, frameon=False, bbox_to_anchor=(0.5, 0.005))
     fig.savefig(os.path.join(out, f"{name}.png")); plt.close(fig)
     return n
@@ -288,19 +291,22 @@ def panel(fig, gs_cell, exp, ds, chrom, mode):
     sub = gs_cell.subgridspec(10, 1, height_ratios=[6, 0.9, 0.5, 0.9, 0.5, 6, 0.9, 0.5, 0.9, 0.5], hspace=0.12)
     axes = [fig.add_subplot(sub[i]) for i in range(10)]
     notes = []
-    for k, (pair_key, label) in enumerate((("mel_alpha", "MEL"), ("bc_alpha", "BC"))):
-        rows = alpha_rows(exp, ds[pair_key], mode, chrom); d = rows["delta"]; n = len(d)
+    pairs = (("mel_alpha", "MEL"), ("bc_alpha", "BC"))
+    loaded = [alpha_rows(exp, ds[pk], mode, chrom) for pk, _ in pairs]
+    ylim = max(panel_scale(r["delta"], 5)[0] for r in loaded)          # one scale per chromosome, shared by both rows
+    for k, ((pair_key, label), rows) in enumerate(zip(pairs, loaded)):
+        d = rows["delta"]; n = len(d)
         a, bt, dt, bn, dn = axes[5 * k: 5 * k + 5]
-        lo, hi = percentile(d, 2.5), percentile(d, 97.5)
-        ylim = max(5, int(percentile([abs(v) for v in d], 99.5) + 0.999))   # per-panel scale: 99.5 % of |Δ| inside, floor ±5
+        _, lo, hi = panel_scale(d, 5)
         a.axhspan(lo, hi, color=BAND, lw=0, zorder=0); a.axhline(0, color=RED, lw=0.7, zorder=1)
-        off = []
         for i, mn, mx in grouped_minmax(d):
+            x = i + (len(d[i:i + 10]) - 1) / 2                             # centre of the group, also for a short last group
             cmn, cmx = max(mn, -ylim), min(mx, ylim)
-            a.plot([i + 5, i + 5], [cmn, cmx], color="black", lw=1.1, solid_capstyle="butt", zorder=2)
-            if mx > ylim: a.plot(i + 5, ylim, marker="^", color=RED, ms=3, zorder=3); off.append(mx)
-            if mn < -ylim: a.plot(i + 5, -ylim, marker="v", color=RED, ms=3, zorder=3); off.append(mn)
-        if off and max(abs(v) for v in off) >= 50: notes.append(f"{label} {max(off, key=abs):+d}")
+            a.plot([x, x], [cmn, cmx], color="black", lw=1.1, solid_capstyle="butt", zorder=2)
+            if mx > ylim: a.plot(x, ylim, marker="^", color=RED, ms=3, zorder=3)
+            if mn < -ylim: a.plot(x, -ylim, marker="v", color=RED, ms=3, zorder=3)
+        peak = max(d, key=abs)
+        if abs(peak) > 50: notes.append(f"{label} {peak:+d}")
         a.set_xlim(-0.5, n - 0.5); a.set_ylim(-ylim, ylim); a.set_xticks([])
         a.set_yticks([-ylim, 0, ylim]); a.set_yticklabels([f"−{ylim}", "0", f"+{ylim}"], fontsize=5, color="#666"); a.tick_params(axis="y", length=2, pad=1)
         a.set_ylabel(label, rotation=0, ha="right", va="center", fontsize=9, weight="bold")
@@ -316,7 +322,7 @@ def appendix(exp, ds, out, mode, name):
     pages = [CHROMS[0:8], CHROMS[8:16], CHROMS[16:24]]
     for p, chroms in enumerate(pages, start=1):
         fig = plt.figure(figsize=(8.27, 11.69), dpi=200)
-        gs = fig.add_gridspec(4, 2, left=0.07, right=0.98, top=0.868, bottom=0.075, hspace=0.35, wspace=0.18)
+        gs = fig.add_gridspec(4, 2, left=0.07, right=0.98, top=0.858, bottom=0.075, hspace=0.35, wspace=0.18)
         for k, chrom in enumerate(chroms):
             cell = gs[k % 4, k // 4]
             notes, n = panel(fig, cell, exp, ds, chrom, mode)
@@ -327,7 +333,7 @@ def appendix(exp, ds, out, mode, name):
         fig.suptitle(f"Stop-codon delta and text qualification — {MODE_LABEL[mode]} mode", fontsize=14, weight="bold", x=0.03, ha="left", y=0.975)
         sub = ("Melanoma (MEL, COLO829 / COLO829BL) over breast cancer (BC, HCC1395 / HCC1395BL). "
                f"{MODE_LABEL[mode]} mode, 7 000-γword windows (≈133 000 nt). Bars: min–max of Δ stop-codons (Tumour − Normal) in 10-window groups "
-               "(no peak lost); the vertical scale is set per panel so that 99.5 % of the windows fall inside it (tick labels give ±range); shaded band: central 95 % of Δ; red marks: values beyond the panel range, notes: peaks beyond ±50; orange: centromere "
+               "(no peak lost); shaded band: central 95 % of Δ; y-range per chromosome = 4 × the wider band, at least ±5 (tick labels); red marks: values beyond the range; notes: the largest |Δ| when above 50; orange: centromere "
                "(GRCh38 cytoband position mapped into the window index through the gene mask). "
                f"Page {p} of 3.")
         fig.text(0.03, 0.952, chr(10).join(textwrap.wrap(sub, 128)), fontsize=7.5, color="#444", va="top", linespacing=1.4)
@@ -355,6 +361,12 @@ def dfa_table(exp, ds, out):
 def percentile(values, p):
     s = sorted(values); k = (len(s) - 1) * p / 100; f = int(k); c = min(f + 1, len(s) - 1)
     return s[f] + (s[c] - s[f]) * (k - f)
+
+def panel_scale(deltas, floor):
+    """Symmetric y-range for a delta panel: four times the central-95 % band, at least ±floor.
+    A band-based rule is robust against the few huge single-window peaks (clipped and marked instead)."""
+    lo, hi = percentile(deltas, 2.5), percentile(deltas, 97.5)
+    return max(floor, math.ceil(4 * max(abs(lo), abs(hi)))), lo, hi
 
 
 def main():
