@@ -1,11 +1,16 @@
-using System;
 using System.Collections.Generic;
-using System.Text;
 
 namespace GammaTextScope
 {
     public static class DistributionHelper
     {
+        /// <summary>
+        /// Histogram of the per-word DFA exponents: bins of width <paramref name="intervals"/>
+        /// from −1.25 upwards to 2.25, keyed by the bin centre (step + intervals/2). The
+        /// classifier reads the result with the literal key 1.0 and compares the rounded peak
+        /// key with 0.6 and 0.7; ClassificationTests guards that the repeated += 0.1 keeps
+        /// producing those keys.
+        /// </summary>
         public static Dictionary<double, double> CountNumberGroupings(List<double> sortedInputList, double intervals)
         {
             List<double> steps = new List<double>();
@@ -28,53 +33,5 @@ namespace GammaTextScope
             }
             return stepCounts;
         }
-
-        public static bool DeterminePeakFromAplha(double alpha, Color color)
-        {
-            if (IdentifyAlpha(alpha) == color)
-                return true;
-
-            return false;
-        }
-
-        private static Color IdentifyAlpha(double alpha)
-        {
-            if (alpha > 0 && alpha < 0.4)
-            {
-                return Color.tail;
-            }
-            else if (alpha >= 0.4 && alpha < 0.7)
-            {
-                return Color.white;
-
-            }
-            else if (alpha >= 0.7 && alpha < 0.9)
-            {
-                return Color.bulge;
-
-            }
-            else if (alpha >= 0.9 && alpha < 1.1)
-            {
-                return Color.pink;
-
-            }
-            else if (alpha >= 1.1 && alpha < 2.0)
-            {
-                return Color.brown;
-
-            }
-
-            return Color.na;
-        }
-    }
-
-    public enum Color
-    {
-        tail,
-        white,
-        bulge,
-        pink,
-        brown,
-        na
     }
 }

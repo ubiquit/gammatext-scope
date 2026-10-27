@@ -156,15 +156,16 @@ namespace GammaTextScope
                 }
                 else if (gaps.Count >= 15)
                 {
-                    // Use smaller threshold if we have at least 15 gaps
+                    // Legacy: series of 15–29 gaps are still submitted. The result is not a
+                    // meaningful exponent (the article reports α only for ≥ 30 gaps) and for
+                    // 15–19 gaps dfa.c's box partition fails, see the catch below.
                     alpha = WordFluctuations.DfaAlpha(gaps, gaps.Count / 2);
                 }
             }
             catch (Exception ex)
             {
-                // DFA can throw when an internal box-size partition yields a degenerate
-                // 1-point regression (e.g. very few or evenly spaced gaps). Treat as N/A
-                // so the rest of the categories/run still complete.
+                // With fewer than 20 points dfa.c has at most one box size and the log–log fit
+                // throws; the row is written as "N/A (DFA error)". Kept because expected/ pins it.
                 failureReason = ex.Message.Split('\n')[0];
                 Console.WriteLine($"    {name}: DFA failed ({failureReason})");
             }

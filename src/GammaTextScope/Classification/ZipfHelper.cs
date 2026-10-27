@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace GammaTextScope
 {
+    /// <summary>
+    /// Zipf test of one window. The rank–frequency list of the γwords seen more than three
+    /// times must decline monotonically on log–log axes, and the log-frequency of the point
+    /// halfway along the list must lie within 5 % of the mean of the points at 30 % and 70 %.
+    /// </summary>
     public static class ZipfHelper
     {
+        /// <returns>(isZipfian, log–log rank–frequency list, |midpoint − interpolated| , slope between the 30 % and 70 % points)</returns>
         public static Tuple<bool, List<KeyValuePair<double, double>>, double, double> ClassifyDistributionDeltaCenter(Dictionary<string, int> distribution)
         {
             var rankFreqList = CreateZipfDistribution(distribution);
@@ -37,33 +42,6 @@ namespace GammaTextScope
             return new Tuple<bool, List<KeyValuePair<double, double>>, double, double>(isZipfian, logRankFreqList, interpolatedDiff, coeffientSlope);
         }
 
-        public static Tuple<bool, List<KeyValuePair<double, double>>> ClassifyDistributionSlope(Dictionary<string, int> distribution)
-        {
-            var rankFreqList = CreateZipfDistribution(distribution);
-            var logRankFreqList = LogTransformDistribution(rankFreqList);
-
-            if (!IsMonotonicDecline(logRankFreqList))
-                return new Tuple<bool, List<KeyValuePair<double, double>>>(false, null);
-
-            var p1top = FindPointInDistribution(logRankFreqList, 0.1);
-            var p2top = FindPointInDistribution(logRankFreqList, 0.4);
-
-            if (p1top == null || p2top == null)
-                return new Tuple<bool, List<KeyValuePair<double, double>>>(false, null);
-
-            double slopeTop = FindSlope(p1top.Item1, p1top.Item2, p2top.Item1, p2top.Item2);
-
-            var p1bot = FindPointInDistribution(logRankFreqList, 0.4);
-            var p2bot = FindPointInDistribution(logRankFreqList, 0.7);
-
-            if (p1bot == null || p2bot == null)
-                return new Tuple<bool, List<KeyValuePair<double, double>>>(false, null);
-
-            double slopeBot = FindSlope(p1bot.Item1, p1bot.Item2, p2bot.Item1, p2bot.Item2);
-
-            return new Tuple<bool, List<KeyValuePair<double, double>>>(IsSimilarSlope(slopeTop, slopeBot), logRankFreqList);
-        }
-
         public static List<KeyValuePair<int, int>> CreateZipfDistribution(Dictionary<string, int> distribution)
         {
             var sortedList = distribution.ToList().OrderByDescending(x => x.Value).ToList();
@@ -82,25 +60,13 @@ namespace GammaTextScope
 
         private static List<KeyValuePair<double, double>> LogTransformDistribution(List<KeyValuePair<int, int>> distribution)
         {
-            List<KeyValuePair<double, double>> loggedDistribution = new List<KeyValuePair<double, double>>();
-            int counter = 0;
-            double lastVal = 0;
+            var loggedDistribution = new List<KeyValuePair<double, double>>();
             foreach (var kvp in distribution)
             {
-                //commented out to make full running
+                // words seen three times or fewer are left out of the fit
                 if (kvp.Value > 3)
-                {
-                    double x = Math.Log(kvp.Key);
-                    if (x < lastVal)
-                    {
-                        int i = 0;
-                    }
-                    counter++;
-                    lastVal = x;
-                    loggedDistribution.Add(new KeyValuePair<double, double>(x, Math.Log(kvp.Value)));
-                }
+                    loggedDistribution.Add(new KeyValuePair<double, double>(Math.Log(kvp.Key), Math.Log(kvp.Value)));
             }
-
 
             return loggedDistribution;
         }
@@ -138,21 +104,6 @@ namespace GammaTextScope
         private static double FindSlope(double x1, double y1, double x2, double y2)
         {
             return (y2 - y1) / (x2 - x1);
-        }
-
-        private static bool IsSimilarSlope(double slope1, double slope2)
-        {
-            double delta = Math.Abs(slope1 - slope2);
-
-            double numerator = slope1 < slope2 ? slope2 : slope1;
-            double denominator = slope1 < slope2 ? slope1 : slope2;
-
-            double pctOfSlope1 = 1 - (numerator / denominator);
-
-            if (pctOfSlope1 <= 0.1)
-                return true;
-
-            return false;
         }
     }
 }

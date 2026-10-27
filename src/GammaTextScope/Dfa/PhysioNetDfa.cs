@@ -68,28 +68,8 @@ Signals. Circulation 101(23):e215-e220 [Circulation Electronic Pages;
 http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
 */
 
-        public void SWAP<T>(T a, T b) { var temp = (a); (a) = (b); (b) = temp; }
-        /*
-        /* Function prototypes. 
-        long input(void);
-        int rscale(long minbox, long maxbox, double boxratio);
-        void dfa(double* seq, long npts, int nfit, long* rs, int nr, int sw);
-        void setup(void);
-        void cleanup(void);
-        void help(void);
-        double polyfit(double** x, double* y, long ndat, int nfit);
-        void error(char error_text[]);
-        double* vector(long nl, long nh);
-        int* ivector(long nl, long nh);
-        long* lvector(long nl, long nh);
-        double** matrix(long nrl, long nrh, long ncl, long nch);
-        void free_vector(double* v, long nl, long nh);
-        void free_ivector(int* v, long nl, long nh);
-        void free_lvector(long* v, long nl, long nh);
-        void free_matrix(double** m, long nrl, long nrh, long ncl, long nch);
-        */
+        static void SWAP<T>(ref T a, ref T b) { T temp = a; a = b; b = temp; }
         /* Global variables. */
-        string pname;    /* this program's name (for use in error messages) */
         double[] seq;    /* input data buffer; allocated and filled by input() */
         long[] rs;   /* box size array; allocated and filled by rscale() */
         double[] mse;    /* fluctuation array; allocated by setup(), filled by dfa() */
@@ -100,45 +80,21 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
         public Tuple<double[], double[]> main(int argc, string[] argv, double[] pointsIn)
         {
             int i, sw = 0;
-            long minbox = 0L, maxbox = 0L, npts, temp;
+            long minbox = 0L, maxbox = 0L, npts;
 
-            /* Read and interpret the command line. */
-            pname = argv[0];
-            //for (i = 1; i < argc && argv[i] == "-"; i++)
-            //{
-            //    switch (argv[i][1])
-            //    {
-            //        case 'd':   /* set nfit (the order of the regression fit) */
-            //            if ((nfit = int.Parse(argv[++i]) + 1) < 2)
-            //            {
-            //                //("order must be greater than 0");
-            //            }
-            //            break;
-            //        case 'i':   /* input data are already integrated */
-            //            iflag = 0; break;
-            //        case 'l':   /* set minbox (the minimum box size) */
-            //            minbox = long.Parse(argv[++i]); break;
-            //        case 'u':   /* set maxbox (the maximum box size) */
-            //            maxbox = long.Parse(argv[++i]); break;
-            //        case 's':   /* enable sliding window mode */
-            //            sw = 1; break;
-            //        //case 'h':   /* print usage information and quit */
-            //        //default:
-            //          //  help();
-            //            //exit(1);
-            //    }
-            //}
+            /* dfa.c reads its options here; the port always uses the defaults: linear
+               detrending (nfit = 2), integrate the input, minbox = 2*nfit, maxbox = npts/4,
+               no sliding window. */
 
             /* Allocate and fill the input data array seq[]. */
             npts = input(pointsIn);
-            //seq = pointsIn;
 
             /* Set minimum and maximum box sizes. */
             if (minbox < 2 * nfit) minbox = 2 * nfit;
             if (maxbox == 0 || maxbox > npts / 4) maxbox = npts / 4;
             if (minbox > maxbox)
             {
-                //SWAP(minbox, maxbox);
+                // dfa.c swaps minbox and maxbox here; the port does not, which only matters for series shorter than 16 points
                 if (minbox < 2 * nfit) minbox = 2 * nfit;
             }
 
@@ -163,11 +119,7 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
                 rsOut.Add(Math.Log10((double)rs[i]));
                 mseOut.Add(Math.Log10(mse[i]) / 2.0);
             }
-            //rsOut.RemoveAt(0);
-            //mseOut.RemoveAt(0);
 
-            /* Release allocated memory. */
-            //cleanup();
             Tuple<double[], double[]> outTuple = new Tuple<double[], double[]>(rsOut.ToArray(), mseOut.ToArray());
             return outTuple;//exit(0);
         }
@@ -185,7 +137,7 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
 
         long input(double[] timeSeries)
         {
-            long maxdat = 0L, lnpts;//, npts = 0L;
+            long lnpts;
             double y, yp = 0.0;
             seq = new double[timeSeries.Count() + 1];
             for (lnpts = 1L; lnpts <= timeSeries.Count(); lnpts++)//  while (scanf("%lf", &y) == 1)
@@ -194,7 +146,6 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
                 seq[lnpts] = iflag ? (yp += y) : y;
             }
 
-            if (lnpts < 1) error("no data read".ToArray());
             return (timeSeries.Count());
         }
         int rslen;  /* length of rs[] */
@@ -269,7 +220,7 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
         private void setup()
         {
             long i;
-            int j, k;
+            int j;
 
             beta = vector(1, nfit);
             covar = matrix(1, nfit, 1, nfit);
@@ -286,45 +237,6 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
                 for (j = 3; j <= nfit; j++)
                     x[i][j] = x[i][j - 1] * i;
             }
-        }
-
-        ///* This function frees all memory previously allocated by this program. */
-        //void cleanup()
-        //{
-        //    free_matrix(x, 1, rs[nr], 1, nfit);
-        //    free_vector(mse, 1, nr);
-        //    free_ivector(ipiv, 1, nfit);
-        //    free_ivector(indxr, 1, nfit);
-        //    free_ivector(indxc, 1, nfit);
-        //    free_matrix(covar0, 1, nfit, 1, nfit);
-        //    free_matrix(covar, 1, nfit, 1, nfit);
-        //    free_vector(beta, 1, nfit);
-        //    free_lvector(rs, 1, rslen); /* allocated by rscale() */
-        //    free(seq);          /* allocated by input() */
-        //}
-
-        static string[] help_strings = {
-            "usage: %s [OPTIONS ...]\n",
-            "where OPTIONS may include:",
-            " -d K             detrend using a polynomial of degree K",
-            "                   (default: K=1 -- linear detrending)",
-            " -h               print this usage summary",
-            " -i               input series is already integrated",
-            " -l MINBOX        smallest box width (default: 2K+2)",
-            " -s               sliding window DFA",
-            " -u MAXBOX        largest box width (default: NPTS/4)",
-            "The standard input should contain one column of data in text format.",
-            "The standard output is two columns: log(n) and log(F) [base 10 logarithms],",
-            "where n is the box size and F is the root mean square fluctuation."
-        };
-
-        private void help()
-        {
-            int i;
-
-            string.Format(help_strings[0], pname);
-            for (i = 1; help_strings[i] != null; i++)
-                string.Format("%s\n", help_strings[i]);
         }
 
         /* polyfit() is based on lfit() and gaussj() from Numerical Recipes in C
@@ -399,7 +311,7 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
                             }
                             else if (ipiv[k] > 1)
                             {
-                                //error("singular matrix");
+                                // dfa.c calls error("singular matrix") and exits here; the port continues
                             }
                         }
                     }
@@ -407,14 +319,14 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
                 ++(ipiv[icol]);
                 if (irow != icol)
                 {
-                    for (j = 1; j <= nfit; j++) SWAP(covar[irow][j], covar[icol][j]);
-                    SWAP(beta[irow], beta[icol]);
+                    for (j = 1; j <= nfit; j++) SWAP(ref covar[irow][j], ref covar[icol][j]);
+                    SWAP(ref beta[irow], ref beta[icol]);
                 }
                 indxr[i] = irow;
                 indxc[i] = icol;
                 if (covar[icol][icol] == 0.0)
                 {
-                    //error("singular matrix"); 
+                    // dfa.c calls error("singular matrix") and exits here; the port continues
                 }
                 pivinv = 1.0 / covar[icol][icol];
                 covar[icol][icol] = 1.0;
@@ -450,90 +362,24 @@ http://circ.ahajournals.org/cgi/content/full/101/23/e215]; 2000 (June 13).
             return (chisq);
         }
 
-        /* The functions below are based on those of the same names in Numerical
-        Recipes (see above). */
-        void error(char[] error_text)
-        {
-            string.Format("%s: %s\n", pname, error_text);
-            //exit(1);
-        }
+        /* The allocators below correspond to vector(), ivector(), lvector() and matrix() of
+        Numerical Recipes (see above). The C versions malloc and offset the pointer so that
+        v[nl..nh] is addressable; here the arrays are simply one element longer than needed
+        and indexed directly, and there is nothing to free. */
+        double[] vector(long nl, long nh) => new double[nh - nl + 2];
 
-        double[] vector(long nl, long nh)
-        /* allocate a double vector with subscript range v[nl..nh] */
-        {
-            double[] v = new double[nh - nl + 2];//(double[])malloc((size_t)((nh - nl + 2) * sizeof(double)));
-            if (v == null) { }// error("allocation failure in vector()");
-            return v; //(v - nl + 1);
-        }
+        int[] ivector(long nl, long nh) => new int[nh - nl + 2];
 
-        int[] ivector(long nl, long nh)
-        /* allocate an int vector with subscript range v[nl..nh] */
-        {
-            int[] v = new int[nh - nl + 2];//(int*)malloc((size_t)((nh - nl + 2) * sizeof(int)));
-            if (v == null) { }// error("allocation failure in ivector()");
-            return v; //(v - nl + 1);
-        }
+        long[] lvector(long nl, long nh) => new long[nh - nl + 2];
 
-        long[] lvector(long nl, long nh)
-        /* allocate a long int vector with subscript range v[nl..nh] */
-        {
-            long[] v = new long[nh - nl + 2]; // (long*)malloc((size_t)((nh - nl + 2) * sizeof(long)));
-            if (v == null) { }// error("allocation failure in lvector()");
-            return v; //(v - nl + 1);
-        }
-
-        double[][] matrix(long nrl, long nrh, long ncl, long nch)
         /* allocate a double matrix with subscript range m[nrl..nrh][ncl..nch] */
+        double[][] matrix(long nrl, long nrh, long ncl, long nch)
         {
-            long i, nrow = nrh - nrl + 1, ncol = nch - ncl + 1;
-            double[][] m;
-
-            /* allocate pointers to rows */
-            m = new double[nrow + 1][];// (double**)malloc((size_t)((nrow + 1) * sizeof(double*)));
-            if (m == null) { }// error("allocation failure 1 in matrix()");
-            //m += 1;
-            //m -= nrl;
-
-            /* allocate rows and set pointers to them */
-            for (int jj = 0; jj < m.Count(); jj++)
-            {
+            long nrow = nrh - nrl + 1, ncol = nch - ncl + 1;
+            var m = new double[nrow + 1][];
+            for (int jj = 0; jj < m.Length; jj++)
                 m[jj] = new double[nrow * ncol + 1];
-            }
-            //m[nrl] =  (double*)malloc((size_t)((nrow * ncol + 1) * sizeof(double)));
-            //if (!m[nrl]) error("allocation failure 2 in matrix()");
-            //m[nrl] += 1;
-            //m[nrl] -= ncl;
-
-            //for (i = nrl + 1; i <= nrh; i++) m[i] = m[i - 1] + ncol;
-
-
-            /* return pointer to array of pointers to rows */
-            return (m);
+            return m;
         }
-
-        //void free_vector(double* v, long nl, long nh)
-        ///* free a double vector allocated with vector() */
-        //{
-        //    free(v + nl - 1);
-        //}
-
-        //void free_ivector(int* v, long nl, long nh)
-        ///* free an int vector allocated with ivector() */
-        //{
-        //    free(v + nl - 1);
-        //}
-
-        //void free_lvector(long* v, long nl, long nh)
-        ///* free a long int vector allocated with lvector() */
-        //{
-        //    free(v + nl - 1);
-        //}
-
-        //void free_matrix(double** m, long nrl, long nrh, long ncl, long nch)
-        ///* free a double matrix allocated by matrix() */
-        //{
-        //    free(m[nrl] + ncl - 1);
-        //    free(m + nrl - 1);
-        //}
     }
 }

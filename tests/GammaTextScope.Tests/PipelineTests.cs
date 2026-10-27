@@ -7,11 +7,35 @@ namespace GammaTextScope.Tests
 {
     public class SequenceMaskingTests
     {
-        [Fact]
-        public void IntergenicDistanceMergingMatchesLegacySelfTest() => Assert.True(SequenceHelper.TestCreateGeneticDistances());
+        private static Dictionary<string, List<EnsembleGeneEntry>> Genes(params (int Start, int End)[] genes)
+        {
+            var index = new Dictionary<string, List<EnsembleGeneEntry>>();
+            for (int i = 0; i < genes.Length; i++)
+                index["g" + i] = new List<EnsembleGeneEntry> { new EnsembleGeneEntry { Chromosome = "chr1", StartPosition = genes[i].Start, EndPosition = genes[i].End } };
+            return index;
+        }
 
+        private static string Masked(FeatureType mode, string line1, string line2, params (int Start, int End)[] genes)
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "gts-tests", "mask");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "sample_chr1.txt");
+            File.WriteAllText(path, line1 + "\n" + line2 + "\n");
+            return WindowHelper.ReadSequenceFromFile(path, "sample_chr1.txt", Genes(genes), mode);
+        }
+
+        // Legacy gene-mask conventions pinned by expected/ (see WindowHelper): a gene (S, E) covers the
+        // 0-based positions S-2..E-2, and the first gene of a chromosome is skipped.
         [Fact]
-        public void SequenceInverterMatchesLegacySelfTest() => Assert.True(SequenceHelper.TestCreateGeneticTextNew());
+        public void GeneMaskKeepsTheLegacyOffsetAndSkipsTheFirstGene()
+        {
+            // positions: 0123456789 0123456789
+            //            ACGTACGTAC GTACGTACGT
+            var genes = new[] { (1, 3), (4, 6), (10, 12) };   // (1,3) skipped; (4,6) -> 2..4 "GTA"; (10,12) -> 8..10 "ACG"
+            Assert.Equal("GTAACG", Masked(FeatureType.Gene, "ACGTACGTAC", "GTACGTACGT", genes));
+            Assert.Equal("ACCGTTACGTACGT", Masked(FeatureType.Intergenic, "ACGTACGTAC", "GTACGTACGT", genes));
+            Assert.Equal("ACGTACGTACGTACGTACGT", Masked(FeatureType.WholeGenome, "ACGTACGTAC", "GTACGTACGT", genes));
+        }
 
         [Fact]
         public void TokenizerKeepsEmptyTokensBetweenAdjacentStopCodons()

@@ -16,9 +16,6 @@ namespace GammaTextScope
         /// terminator is fixed to CRLF instead of following Environment.NewLine.
         /// </summary>
         public const string OutputNewLine = "\r\n";
-
-        public const int SlidingWindowKWordThreshold = 50;
-        public const int WindowSize = 5000000;
     }
 
     public enum FeatureType

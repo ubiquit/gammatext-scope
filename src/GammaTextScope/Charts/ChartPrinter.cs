@@ -12,82 +12,6 @@ namespace GammaTextScope
 {
     public static class ChartPrinter
     {
-        public static void PrintChart(List<KeyValuePair<string, double>> series, string chartTitle, string xAxisLabel, string yAxisLabel, string filePath)
-        {
-            var model = new PlotModel { Title = chartTitle, DefaultFont = "Arial", PlotType = PlotType.XY };
-            model.Axes.Add(new LinearAxis { Title = xAxisLabel, Position = AxisPosition.Bottom });
-            model.Axes.Add(new LinearAxis { Title = yAxisLabel, Position = AxisPosition.Left });
-
-            var groupings = DistributionHelper.CountNumberGroupings(series.Select(x => x.Value).OrderBy(x => x).ToList(), 0.1);
-            var lineSeries = new OxyPlot.Series.AreaSeries();
-
-            foreach (var group in groupings)
-                lineSeries.Points.Add(new DataPoint(group.Key, group.Value));
-
-            model.Series.Add(lineSeries);
-
-            var exporter = new PdfExporter { Width = 1000, Height = 500 };
-            using (var stream = File.Create(@filePath))
-            {
-                exporter.Export(model, stream);
-            }
-        }
-
-        public static void PrintChartUnsorted(List<KeyValuePair<double, double>> series, string chartTitle, string xAxisLabel, string yAxisLabel, string filePath, double abosouteMinimum, List<string> xAxixSlabels = null, double majorStep = 2)
-        {
-            var model = new PlotModel { Title = chartTitle, DefaultFont = "Arial", PlotType = PlotType.XY };
-            model.Axes.Add(new LinearAxis { Title = yAxisLabel, Position = AxisPosition.Left, MajorStep = majorStep });
-
-            if (xAxixSlabels != null)
-            {
-                var xAxis = new CategoryAxis { Title = xAxisLabel, Position = AxisPosition.Bottom, AbsoluteMinimum = abosouteMinimum };
-                if (xAxixSlabels != null)
-                    foreach (var label in xAxixSlabels)
-                        xAxis.Labels.Add(label);
-
-                model.Axes.Add(xAxis);
-            }
-
-
-            var lineSeries = new OxyPlot.Series.AreaSeries();
-
-            foreach (var group in series)
-                lineSeries.Points.Add(new DataPoint(group.Key, group.Value));
-
-            model.Series.Add(lineSeries);
-
-            var exporter = new PdfExporter { Width = 1000, Height = 500 };
-            using (var stream = File.Create(@filePath))
-            {
-                exporter.Export(model, stream);
-            }
-        }
-
-        public static void PrintChartBig(List<KeyValuePair<double, double>> series, List<string> xAxixSlabels, string chartTitle, string xAxisLabel, string yAxisLabel, string filePath)
-        {
-            var model = new PlotModel { Title = chartTitle, DefaultFont = "Arial", PlotType = PlotType.XY };
-            model.Axes.Add(new LinearAxis { Title = yAxisLabel, Position = AxisPosition.Left, MajorStep = 2 });
-
-            var xAxis = new CategoryAxis { Title = xAxisLabel, Position = AxisPosition.Bottom, AbsoluteMinimum = 1 };
-            foreach (var label in xAxixSlabels)
-                xAxis.Labels.Add(label);
-
-            model.Axes.Add(xAxis);
-
-            var lineSeries = new OxyPlot.Series.AreaSeries();
-
-            foreach (var group in series)
-                lineSeries.Points.Add(new DataPoint(group.Key, group.Value));
-
-            model.Series.Add(lineSeries);
-
-            var exporter = new PdfExporter { Width = 2500, Height = 500 };
-            using (var stream = File.Create(@filePath))
-            {
-                exporter.Export(model, stream);
-            }
-        }
-
         public static void PrintHorizontalBarChart(List<double> values, List<string> labels, string chartTitle, string valueLabel, string categoryLabel, string filePath)
         {
             var model = new PlotModel { Title = chartTitle, DefaultFont = "Arial" };
@@ -201,7 +125,7 @@ namespace GammaTextScope
         }
         /// <summary>
         /// Line chart of stop codon delta per window, with colored background bands
-        /// showing classification (alfa=green, zipf=blue, ikke=gray) for Normal (top band)
+        /// showing classification (alfa=red, zipf=blue, ikke=gray) for Normal (top band)
         /// and Tumor (bottom band). Optional chromosome boundary lines for genome-wide view.
         /// </summary>
         public static void PrintStopCodonAlphaLineChart(
@@ -429,7 +353,7 @@ namespace GammaTextScope
         /// places a decay marker:
         ///   - Dot above Normal band = Normal more qualified (tumor decayed)
         ///   - Dot below Tumor band  = Tumor more qualified (normal decayed)
-        /// Green dot if the advantage is alfa-dominated, blue if zipf-dominated.
+        /// Red dot if the advantage is alfa-dominated, blue if zipf-dominated.
         /// </summary>
         private static void AddDecayDeltaMarkers(
             PlotModel model,

@@ -4,17 +4,13 @@ using System.Collections.Generic;
 namespace GammaTextScope
 {
     /// <summary>
-    /// GRCh38 (hg38) centromere coordinates from UCSC cytoband data.
-    /// These are the approximate start and end positions of the centromeric
-    /// region on each chromosome in the reference assembly.
-    ///
-    /// Used to annotate charts with centromere locations so that assembly
-    /// artifacts in these regions can be visually identified.
+    /// GRCh38 centromere (acen band) coordinates from the UCSC cytoBand table, rounded to
+    /// 100 kb. Used only as the fallback for marking the centromere on the per-chromosome
+    /// DNA-scope charts when no window has a zero tumour count.
     /// </summary>
     public static class CentromereRegions
     {
         // (start, end) in raw chromosome coordinates (0-based, bp)
-        // Source: UCSC Table Browser → cytoBand → GRCh38, filtered for acen bands
         private static readonly Dictionary<string, (long Start, long End)> _regions =
             new Dictionary<string, (long, long)>(StringComparer.OrdinalIgnoreCase)
             {
@@ -58,31 +54,5 @@ namespace GammaTextScope
                 return region;
             return null;
         }
-
-        /// <summary>
-        /// Check if a genomic position falls within the centromere.
-        /// </summary>
-        public static bool IsInCentromere(string chr, long position)
-        {
-            var region = GetRegion(chr);
-            if (region == null) return false;
-            return position >= region.Value.Start && position <= region.Value.End;
-        }
-
-        /// <summary>
-        /// Check if a range overlaps the centromere.
-        /// </summary>
-        public static bool OverlapsCentromere(string chr, long start, long length)
-        {
-            var region = GetRegion(chr);
-            if (region == null) return false;
-            long end = start + length;
-            return start < region.Value.End && end > region.Value.Start;
-        }
-
-        /// <summary>
-        /// Get all centromere regions.
-        /// </summary>
-        public static IReadOnlyDictionary<string, (long Start, long End)> All => _regions;
     }
 }

@@ -254,7 +254,7 @@ namespace GammaTextScope
 
             // Feature-filtered: use WindowHelper with a cloned gene index
             var clonedIndex = CloneGeneIndex(geneIndex);
-            return CleanSequence(WindowHelper.ReadSequenceFromFile(filePath, Path.GetFileName(filePath), ref clonedIndex, featureType));
+            return CleanSequence(WindowHelper.ReadSequenceFromFile(filePath, Path.GetFileName(filePath), clonedIndex, featureType));
         }
 
         private static Dictionary<string, List<EnsembleGeneEntry>> CloneGeneIndex(
@@ -404,11 +404,17 @@ namespace GammaTextScope
             if (denom == 0.0) return (1.0, 0.0);
 
             double z = (p2 - p1) / denom;
-            double p = 2.0 * (1.0 - CdfStdNormal(Math.Abs(z)));
+            // NOTE: Erf(x) is the error function, not the normal CDF Φ(x), so P is 2·erfc(|z|)
+            // instead of the two-sided normal p-value erfc(|z|/√2) — too small by a factor that
+            // grows with |z| (4× at z = 2, 60× at z = 3). The _diff and _significant tables in
+            // expected/ were produced with this formula and are kept unchanged; the article uses
+            // only the counts. Do not cite the P and Q columns.
+            double p = 2.0 * (1.0 - Erf(Math.Abs(z)));
             return (p, z);
         }
 
-        private static double CdfStdNormal(double x)
+        /// <summary>erf(x) by the Numerical Recipes erfcc approximation (fractional error below 1.2e-7).</summary>
+        private static double Erf(double x)
         {
             double t = 1.0 / (1.0 + 0.5 * Math.Abs(x));
             double tau = t * Math.Exp(-x * x - 1.26551223 +

@@ -276,12 +276,12 @@ namespace GammaTextScope
             if (normalChrFiles.TryGetValue(chr, out var nf))
             {
                 var nGeneIdx = CloneGeneIndex(normalGeneIndex);
-                normalSeq = CleanSequence(WindowHelper.ReadSequenceFromFile(nf, Path.GetFileName(nf), ref nGeneIdx, featureType));
+                normalSeq = CleanSequence(WindowHelper.ReadSequenceFromFile(nf, Path.GetFileName(nf), nGeneIdx, featureType));
             }
             if (tumorChrFiles.TryGetValue(chr, out var tf))
             {
                 var tGeneIdx = CloneGeneIndex(tumorGeneIndex);
-                tumorSeq = CleanSequence(WindowHelper.ReadSequenceFromFile(tf, Path.GetFileName(tf), ref tGeneIdx, featureType));
+                tumorSeq = CleanSequence(WindowHelper.ReadSequenceFromFile(tf, Path.GetFileName(tf), tGeneIdx, featureType));
             }
 
             // Build alignment offset map
@@ -320,9 +320,10 @@ namespace GammaTextScope
                     tumorStops = CountStopsInRange(tumorSeq, startPos, length);
                 }
 
-                // If the tumor produced zero stop codons, the assembly failed
-                // for this region (e.g. centromere, all N's). Report delta=0
-                // rather than a misleading -7001 spike.
+                // Sentinel, not a count: tumorStops is 0 when no chunk of a long window passed
+                // the validation in CountStopsAlignedChunked (typically a window that spans an
+                // assembly gap). Such rows are written as Tumor_StopCodons = 0, Delta = 0 instead
+                // of a -7001 spike; they are not evidence of stop-codon loss.
                 long delta = (tumorStops == 0 && normalStops > 0) ? 0 : tumorStops - normalStops;
 
                 rows.Add(new WindowRow
@@ -421,18 +422,6 @@ namespace GammaTextScope
         }
 
         // ───────── Index file parsing ─────────
-
-        private static string FeatureTypeToFolderName(FeatureType ft)
-        {
-            switch (ft)
-            {
-                case FeatureType.Intergenic: return "Intergenic";
-                case FeatureType.Gene: return "Gene";
-                case FeatureType.Exon: return "Exon";
-                case FeatureType.WholeGenome: return "WholeGenome";
-                default: return ft.ToString();
-            }
-        }
 
         private static string GetIndexDir(string species, FeatureType featureType)
         {
@@ -687,13 +676,14 @@ namespace GammaTextScope
         /// For a list of window rows from a single chromosome, find the window index range
         /// that overlaps the centromere. Uses a two-pass approach:
         ///
-        ///  1. Primary signal: find windows with tStops=0 (assembly gaps — reliable indicator)
-        ///     Any contiguous run of tStops=0 is marked, even a single window.
-        ///     For wider coverage, also include windows immediately adjacent to tStops=0
-        ///     that have tStops far from normal (~50%+ deviation).
+        ///  1. Primary signal: windows with Tumor_StopCodons = 0 (the sentinel written when no
+        ///     chunk of a long window passed validation, which happens where the window spans an
+        ///     assembly gap). The run from the first to the last such window is marked, widened
+        ///     by adjacent windows whose tumour/normal ratio is outside 0.5–2.
         ///
-        ///  2. If no tStops=0 windows found, fall back to UCSC centromere coordinates
-        ///     with proportional mapping (approximate).
+        ///  2. If there is no such window, fall back to the UCSC centromere coordinates mapped
+        ///     proportionally onto the filtered coordinate (approximate; the figure script in
+        ///     figures/ maps them exactly through the gene mask instead).
         ///
         /// Returns null if no centromere region can be identified.
         /// </summary>

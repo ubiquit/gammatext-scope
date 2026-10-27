@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 namespace GammaTextScope
 {
     /// <summary>
-    /// Per-word DFA exponents for one window of γtext. Replaces the AlphaLib
-    /// Index/Document pair used by the legacy pipeline with the two things the
-    /// classification actually needs: the occurrence-gap series of every word and
-    /// the DFA α of each series that has at least <see cref="GenomeConstants.AlphaWordThreshold"/>
-    /// occurrences. The gap bookkeeping mirrors AlphaLib.Document.MakePostingDistances.
+    /// Per-word DFA exponents for one window of γtext: the occurrence-gap series of
+    /// every word and the DFA α of each series that has at least
+    /// <see cref="GenomeConstants.AlphaWordThreshold"/> occurrences. The gap bookkeeping
+    /// (the first gap is the position of the first occurrence, counted from 1) follows
+    /// the legacy pipeline's word index and is pinned by expected/.
     /// </summary>
     public static class WordFluctuations
     {

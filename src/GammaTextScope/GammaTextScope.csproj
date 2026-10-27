@@ -11,7 +11,6 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <Description>Stop-codon γtext comparison of tumour and matched-normal genomes (DNA-scope pipeline).</Description>
-    <NoWarn>CS0168;CS0219;CS0414;CS0649;CS8321;CS0162;CS0618</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

@@ -77,7 +77,6 @@ namespace GammaTextScope
                     }
 
                     // Lost alignment — search nearby for the anchor
-                    bool found = false;
                     for (int delta = 1; delta <= MaxSearchRadius; delta++)
                     {
                         // Try shift right (tumor has insertion)
@@ -87,7 +86,6 @@ namespace GammaTextScope
                         {
                             currentOffset += delta;
                             map._breakpoints.Add((nPos, currentOffset));
-                            found = true;
                             break;
                         }
 
@@ -98,7 +96,6 @@ namespace GammaTextScope
                         {
                             currentOffset -= delta;
                             map._breakpoints.Add((nPos, currentOffset));
-                            found = true;
                             break;
                         }
                     }
@@ -140,7 +137,6 @@ namespace GammaTextScope
                 }
 
                 // Search outward from identity position
-                bool found = false;
                 for (int delta = 1; delta <= ReanchorSearchRadius; delta++)
                 {
                     int tryPos = probePos + delta;
@@ -148,7 +144,6 @@ namespace GammaTextScope
                         SequenceMatch(normalSeq, probePos, tumorSeq, tryPos, ReanchorLen))
                     {
                         offsets.Add(delta);
-                        found = true;
                         break;
                     }
 
@@ -157,7 +152,6 @@ namespace GammaTextScope
                         SequenceMatch(normalSeq, probePos, tumorSeq, tryPos, ReanchorLen))
                     {
                         offsets.Add(-delta);
-                        found = true;
                         break;
                     }
                 }
@@ -169,15 +163,6 @@ namespace GammaTextScope
             // Return median offset (robust against outliers)
             offsets.Sort();
             return offsets[offsets.Count / 2];
-        }
-
-        /// <summary>
-        /// Given a position in the Normal sequence, return the corresponding
-        /// position in the Tumor sequence.
-        /// </summary>
-        public int NormalToTumor(int normalPos)
-        {
-            return normalPos + OffsetAt(normalPos);
         }
 
         /// <summary>
@@ -215,10 +200,7 @@ namespace GammaTextScope
             return (tumorStart, normalLength);
         }
 
-        /// <summary>
-        /// Get the cumulative offset at a given Normal position (without adding
-        /// the position itself, unlike NormalToTumor which returns pos + offset).
-        /// </summary>
+        /// <summary>Cumulative offset in force at a Normal position (tumorPos = normalPos + offset).</summary>
         private int OffsetAt(int normalPos)
         {
             int lo = 0, hi = _breakpoints.Count - 1;
@@ -234,7 +216,8 @@ namespace GammaTextScope
         }
 
         /// <summary>
-        /// Number of offset breakpoints detected (= number of indel events).
+        /// Number of offset changes recorded: local indel re-alignments plus one entry per
+        /// 10 Mb segment whose re-anchored offset differs from the previous one.
         /// </summary>
         public int BreakpointCount => _breakpoints.Count;
 
