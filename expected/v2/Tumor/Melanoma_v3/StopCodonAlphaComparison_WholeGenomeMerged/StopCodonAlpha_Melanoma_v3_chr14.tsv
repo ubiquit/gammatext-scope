@@ -1,5 +1,5 @@
 Window	StartPos	Length	Normal_Class	Tumor_Class	Normal_StopCodons	Tumor_StopCodons	Delta
-1	0	16164697	ikke	ikke	7001	0	0
+1	0	16164697	ikke	ikke	7001	7002	1
 2	16164697	119758	zipf	zipf	7001	7001	0
 3	16284455	123347	zipf	zipf	7001	7001	0
 4	16407802	134440	ikke	ikke	7001	7001	0
@@ -18,7 +18,7 @@ Window	StartPos	Length	Normal_Class	Tumor_Class	Normal_StopCodons	Tumor_StopCodo
 17	18157768	190568	zipf	zipf	7001	7002	1
 18	18348336	143895	zipf	zipf	7001	7002	1
 19	18492231	142192	alfa	alfa	7001	7002	1
-20	18634423	289709	ikke	ikke	7001	10501	3500
+20	18634423	289709	ikke	ikke	7001	7001	0
 21	18924132	139897	ikke	ikke	7001	7001	0
 22	19064029	130114	zipf	zipf	7001	7004	3
 23	19194143	134243	zipf	zipf	7001	6998	-3
@@ -689,4 +689,4 @@ Window	StartPos	Length	Normal_Class	Tumor_Class	Normal_StopCodons	Tumor_StopCodo
 688	82613339	136963	alfa	ikke	7003	7004	1
 689	82750302	131637	ikke	ikke	7001	7001	0
 690	82881939	130992	alfa	zipf	7001	7001	0
-691	83012931	257238	ikke	ikke	5013	0	0
+691	83012931	257238	ikke	ikke	5013	5013	0

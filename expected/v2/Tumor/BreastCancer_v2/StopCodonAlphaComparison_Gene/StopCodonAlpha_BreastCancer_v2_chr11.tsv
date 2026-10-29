@@ -1,5 +1,5 @@
 Window	StartPos	Length	Normal_Class	Tumor_Class	Normal_StopCodons	Tumor_StopCodons	Delta
-1	0	215577	ikke	ikke	7001	7000	-1
+1	0	215577	ikke	ikke	7001	7001	0
 2	215577	237698	ikke	ikke	7001	7001	0
 3	453275	294187	zipf	zipf	7001	7001	0
 4	747462	207476	alfa	ikke	7001	7003	2

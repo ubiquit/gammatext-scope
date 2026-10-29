@@ -90,7 +90,8 @@ gammatext-scope decay-dfa     --pair BreastCancer --mode Intergenic
 `alpha-compare` on chromosome 21 when the sequence data is present) and chart
 rendering smoke tests. Status of the lift against the legacy outputs
 (chromosome 21, both cancers): `classify` reproduces the legacy window
-classification exactly; `density` and `alpha-compare` are byte-identical.
+classification exactly; `density` and `alpha-compare` were byte-identical
+until the correction of 29 October 2026 described below.
 
 Provenance of `expected/v1`: Intergenic and Gene outputs are the legacy runs
 of 5 June / 15 September 2026; the `WholeGenomeMerged` and `WholeGenome`
@@ -98,6 +99,21 @@ tables were regenerated on 12 October 2026 with this code from the legacy
 classifications (the legacy whole-genome run of 22 May predated the annotation
 change of 27 May). `expected/v2` was produced entirely with this code on
 15 October 2026 from the inputs built by `scripts/inputs/`.
+
+Correction of 29 October 2026: the tumour count of a window longer than
+200 kb (one that spans an N-run, a centromere or an acrocentric arm; about
+1.5 % of all windows) was counted in 100-kb chunks, and a chunk whose
+stop-codon density differed by more than 2x from the window mean was dropped
+and the rest scaled up to the full window. An N-run has density 0, so its
+chunks were always dropped and the real chunks were multiplied by 1.5, 2, 4 ...;
+every |Delta| above about 100 in the `alpha-compare` tables of both datasets,
+and every `Tumor_StopCodons = 0` row, came from that scaling and not from the
+sequences. The rule now counts every chunk. The `StopCodonAlphaComparison_*`
+tables of `expected/v1` and `expected/v2` were regenerated on that date; only
+the `Tumor_StopCodons` and `Delta` columns of windows longer than 200 kb
+changed, and the window classes, decay dots and `DecayGapDFA_*` summaries are
+identical. The tables as they stood before are in the git history, and the
+figures of the submitted manuscript show the artefact as off-scale peaks.
 
 Runtime: `classify` is single-threaded per chromosome and its legacy window
 scanner is quadratic in chromosome length (it re-tokenises the remainder of
@@ -127,7 +143,9 @@ sample's gene mask with the same interval logic as `FilteredToRawMapper`;
 this needs the sample data under `--data-root` (or `GAMMATEXT_DATA`) and
 falls back to the legacy zero-stop-window heuristic without it.
 `figures/out/v1/` and `figures/out/v2/` hold the rendered sets for the two
-datasets; the v1 set reproduces the content of the submitted figures.
+datasets; the v1 set reproduces the content of the submitted figures except
+for the off-scale peaks, which were the counting artefact corrected on
+29 October 2026 (see *Reproducing the article*).
 
 ## Input provenance
 

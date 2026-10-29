@@ -313,18 +313,14 @@ namespace GammaTextScope
                 long tumorStops;
                 if (offsetMap != null)
                 {
-                    tumorStops = CountStopsAlignedChunked(tumorSeq, offsetMap, startPos, length, normalSeq);
+                    tumorStops = CountStopsAlignedChunked(tumorSeq, offsetMap, startPos, length);
                 }
                 else
                 {
                     tumorStops = CountStopsInRange(tumorSeq, startPos, length);
                 }
 
-                // Sentinel, not a count: tumorStops is 0 when no chunk of a long window passed
-                // the validation in CountStopsAlignedChunked (typically a window that spans an
-                // assembly gap). Such rows are written as Tumor_StopCodons = 0, Delta = 0 instead
-                // of a -7001 spike; they are not evidence of stop-codon loss.
-                long delta = (tumorStops == 0 && normalStops > 0) ? 0 : tumorStops - normalStops;
+                long delta = tumorStops - normalStops;
 
                 rows.Add(new WindowRow
                 {
@@ -485,78 +481,43 @@ namespace GammaTextScope
         // ───────── Stop codon counting ─────────
 
         /// <summary>
-        /// Count stop codons in the tumor sequence by translating through the offset map
-        /// in small independent chunks. Each chunk gets its own correctly-translated start
-        /// position, preventing large windows (e.g. 18M centromeric deserts) from landing
-        /// in completely wrong regions when the offset map loses tracking.
+        /// Count stop codons in the tumour range that corresponds to a normal window. A window
+        /// of up to 200 kb is translated through the offset map in one go. A longer window
+        /// (one that spans an assembly gap, a centromere or an acrocentric arm) is translated
+        /// in 100-kb chunks, so every chunk is re-anchored at its own translated start and an
+        /// offset that drifts inside the window cannot carry the count into the wrong region.
+        /// Every chunk is counted; a stop codon that straddles a chunk boundary is counted by
+        /// the chunk its first base falls in, so the sum equals a count of the whole range.
         ///
-        /// Validation uses TWO checks per chunk:
-        ///  1. Length ratio: translated length must be within 50% of input length
-        ///  2. Density check: the chunk's stop codon rate must be within a reasonable range
-        ///     of the normal rate (prevents chunks that land in entirely wrong genomic regions)
+        /// Until 29 October 2026 a chunk whose stop-codon density differed by more than 2x
+        /// from the window mean was dropped and the sum of the remaining chunks was scaled up
+        /// by chunks/accepted. An N-run has density 0, so its chunks were always dropped and
+        /// the real chunks of the window were multiplied by 1.5, 2, 4 ... — every |Delta| above
+        /// about 100 in the dataset v1 and v2 tables, and every "Tumor_StopCodons = 0" row,
+        /// came from that rule and not from the sequences (see README, Reproducing the article).
         /// </summary>
         private static long CountStopsAlignedChunked(string tumorSeq, AlignmentOffsetMap offsetMap,
-            int normalStart, int normalLength, string normalSeq = null)
+            int normalStart, int normalLength)
         {
             const int ChunkSize = 100_000;
-            const double MaxLenRatio = 1.5;   // skip chunk if translated length is >150% or <67% of input
-            const double MaxDensityRatio = 2.0; // skip chunk if stop codon density is >2x or <0.5x of normal
 
-            // Small windows: translate in one go (fast path)
             if (normalLength <= ChunkSize * 2)
             {
                 var (tStart, tLen) = offsetMap.TranslateRange(normalStart, normalLength);
                 return CountStopsInRange(tumorSeq, tStart, tLen);
             }
 
-            // Compute normal density for this window (stops per bp) for validation
-            double normalDensity = 0;
-            if (normalSeq != null && normalLength > 0)
-            {
-                long normalStops = CountStopsInRange(normalSeq, normalStart, normalLength);
-                normalDensity = (double)normalStops / normalLength;
-            }
-
-            // Large windows: chunk and sum
             long total = 0;
-            int chunksUsed = 0;
-
             for (int offset = 0; offset < normalLength; offset += ChunkSize)
             {
                 int chunkLen = Math.Min(ChunkSize, normalLength - offset);
+                bool lastChunk = offset + chunkLen >= normalLength;
                 var (tStart, tLen) = offsetMap.TranslateRange(normalStart + offset, chunkLen);
-
-                // Check 1: is the translated length reasonable?
-                double lenRatio = (double)tLen / chunkLen;
-                if (lenRatio > MaxLenRatio || lenRatio < (1.0 / MaxLenRatio))
-                    continue; // alignment lost — skip
-
-                // Count stops for this chunk
-                long chunkStops = CountStopsInRange(tumorSeq, tStart, tLen);
-
-                // Check 2: is the stop codon density reasonable compared to normal?
-                // Only apply when we have a valid normal density to compare against
-                if (normalDensity > 0 && tLen > 0)
-                {
-                    double chunkDensity = (double)chunkStops / tLen;
-                    double densityRatio = chunkDensity / normalDensity;
-                    if (densityRatio > MaxDensityRatio || densityRatio < (1.0 / MaxDensityRatio))
-                        continue; // chunk landed in wrong region — skip
-                }
-
-                total += chunkStops;
-                chunksUsed++;
+                // CountStopsInRange counts codons that start up to two bases before the end of
+                // the range, so a chunk is given two extra bases to catch the codons that start
+                // in its last two bases; the last chunk ends where the window ends.
+                total += CountStopsInRange(tumorSeq, tStart, lastChunk ? tLen : tLen + 2);
             }
-
-            // If some chunks were skipped (alignment lost), extrapolate from the good chunks
-            if (chunksUsed == 0) return 0;
-            int totalChunks = (normalLength + ChunkSize - 1) / ChunkSize;
-            if (chunksUsed < totalChunks)
-            {
-                // Scale up proportionally to cover the missing chunks
-                total = (long)((double)total / chunksUsed * totalChunks);
-            }
-
             return total;
         }
 
@@ -676,10 +637,12 @@ namespace GammaTextScope
         /// For a list of window rows from a single chromosome, find the window index range
         /// that overlaps the centromere. Uses a two-pass approach:
         ///
-        ///  1. Primary signal: windows with Tumor_StopCodons = 0 (the sentinel written when no
-        ///     chunk of a long window passed validation, which happens where the window spans an
-        ///     assembly gap). The run from the first to the last such window is marked, widened
-        ///     by adjacent windows whose tumour/normal ratio is outside 0.5–2.
+        ///  1. Primary signal: windows with Tumor_StopCodons = 0. The counting rule in force
+        ///     until 29 October 2026 wrote such rows where no chunk of a long window passed its
+        ///     density check (windows spanning an assembly gap); the current rule never does, so
+        ///     this pass finds nothing and the fallback below applies. The run from the first
+        ///     to the last such window is marked, widened by adjacent windows whose
+        ///     tumour/normal ratio is outside 0.5–2.
         ///
         ///  2. If there is no such window, fall back to the UCSC centromere coordinates mapped
         ///     proportionally onto the filtered coordinate (approximate; the figure script in

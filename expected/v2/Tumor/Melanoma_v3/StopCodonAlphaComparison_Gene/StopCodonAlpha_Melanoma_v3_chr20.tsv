@@ -78,5 +78,5 @@ Window	StartPos	Length	Normal_Class	Tumor_Class	Normal_StopCodons	Tumor_StopCodo
 77	10789924	143949	ikke	ikke	7002	7003	1
 78	10933873	159541	ikke	ikke	7001	7001	0
 79	11093414	221682	zipf	zipf	7001	7001	0
-80	11315096	280394	ikke	zipf	7001	7000	-1
+80	11315096	280394	ikke	zipf	7001	7001	0
 81	11595490	178930	ikke	ikke	5631	5632	1
