@@ -5,15 +5,13 @@ using System.IO;
 namespace GammaTextScope
 {
     /// <summary>
-    /// Locations of inputs and outputs. The legacy pipeline hard-coded
-    /// D:\Files\Stream (inputs) and D:\Files\Harvests (outputs); those remain the
-    /// defaults so existing data layouts keep working, but both can be overridden
-    /// with --data-root / --out-root or the GAMMATEXT_DATA / GAMMATEXT_OUT variables.
+    /// Locations of inputs and outputs: ./data and ./out by default, overridden with
+    /// --data-root / --out-root or the GAMMATEXT_DATA / GAMMATEXT_OUT variables.
     /// </summary>
     public sealed class PipelineConfig
     {
-        public string DataRoot { get; init; } = Environment.GetEnvironmentVariable("GAMMATEXT_DATA") ?? @"D:\Files\Stream";
-        public string OutRoot  { get; init; } = Environment.GetEnvironmentVariable("GAMMATEXT_OUT")  ?? @"D:\Files\Harvests";
+        public string DataRoot { get; init; } = Environment.GetEnvironmentVariable("GAMMATEXT_DATA") ?? "data";
+        public string OutRoot  { get; init; } = Environment.GetEnvironmentVariable("GAMMATEXT_OUT")  ?? "out";
 
         /// <summary>Optional chromosome filter ("21", "X", ...; without the chr prefix). Null = all.</summary>
         public HashSet<string> Chromosomes { get; init; }

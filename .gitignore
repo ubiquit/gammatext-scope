@@ -5,11 +5,12 @@ obj/
 .vs/
 *.swp
 TestResults/
-figures/__pycache__/
-figures/.venv/
 *.pyc
 
-figures/.cache/
 
-# default output root of scripts/reproduce_article9.sh
+# default output root
 /out/
+
+# working folders of the authors (article figures and data-preparation scripts), not part of the code reference
+/figures/
+/scripts/

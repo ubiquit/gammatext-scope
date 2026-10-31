@@ -5,7 +5,7 @@ namespace GammaTextScope
     /// coordinates minus one (see SequenceHelper.ReadGeneIndexFromStream); how they are
     /// applied to the sequence is described in WindowHelper.
     /// </summary>
-    public class EnsembleGeneEntry
+    public class GeneEntry
     {
         public string ID { get; set; }
         public string GeneName { get; set; }

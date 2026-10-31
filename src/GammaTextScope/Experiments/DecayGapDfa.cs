@@ -156,7 +156,7 @@ namespace GammaTextScope
                 }
                 else if (gaps.Count >= 15)
                 {
-                    // Legacy: series of 15–29 gaps are still submitted. The result is not a
+                    // Series of 15–29 gaps are still submitted (convention pinned by expected/). The result is not a
                     // meaningful exponent (the article reports α only for ≥ 30 gaps) and for
                     // 15–19 gaps dfa.c's box partition fails, see the catch below.
                     alpha = WordFluctuations.DfaAlpha(gaps, gaps.Count / 2);

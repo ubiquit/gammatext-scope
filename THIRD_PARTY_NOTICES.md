@@ -65,22 +65,15 @@ Used for the PDF chart export of the experiments (`OxyPlot.Core` NuGet package).
     Licensed under the MIT licence; the licence text is the one reproduced
     above for Math.NET Numerics.
 
-## matplotlib
-
-`figures/make_figures.py` renders the article figures with matplotlib
-(https://matplotlib.org), distributed under the matplotlib licence, a
-BSD-compatible licence based on the Python Software Foundation licence.
-matplotlib is not redistributed here.
-
 ## Data and reference tables
 
-* **GRCh38 centromere coordinates** (`CentromereRegions.cs`, `make_figures.py`)
+* **GRCh38 centromere coordinates** (`CentromereRegions.cs`)
   are the `acen` bands of the UCSC Genome Browser `cytoBand` table for hg38
   (https://genome.ucsc.edu), rounded to 100 kb; for the acrocentric
   chromosomes 13, 14, 15, 21 and 22 the whole short arm up to the centromere is
   marked.
 * **Gene annotation**: GENCODE release 44 (Ensembl 110), https://www.gencodegenes.org,
-  lifted onto each consensus genome as described in `scripts/inputs/README.md`.
+  lifted onto each consensus genome as described in the README (*Input provenance*).
 * **HCC1395 / HCC1395BL**: SEQC2 somatic reference sample, high-confidence
   sSNV/sINDEL v1.2.1 — Fang L.T. et al., *Establishing community reference
   samples, data and call sets for benchmarking cancer mutation detection using
@@ -91,4 +84,5 @@ matplotlib is not redistributed here.
   comprehensive catalogue of somatic mutations from a human cancer genome*,
   Nature 463, 191–196 (2010).
 * The sequences themselves are not redistributed in this repository; the
-  scripts to rebuild them from the public sources are in `scripts/inputs/`.
+  README (*Input provenance*) describes how to rebuild them from the public
+  sources.

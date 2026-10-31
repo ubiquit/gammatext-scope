@@ -20,9 +20,9 @@ commands
 options
   --mode M            Intergenic | Gene | WholeGenome   (Exon: experimental, untested)
   --merged            with --mode WholeGenome: use the union of the Intergenic and Gene classifications
-                      (legacy behaviour, outputs *_WholeGenomeMerged) instead of whole-genome classifications
-  --data-root DIR     input root (default D:\Files\Stream or $GAMMATEXT_DATA)
-  --out-root DIR      output root (default D:\Files\Harvests or $GAMMATEXT_OUT)
+                      (outputs *_WholeGenomeMerged; depends on the annotation) instead of whole-genome classifications
+  --data-root DIR     input root (default ./data or $GAMMATEXT_DATA)
+  --out-root DIR      output root (default ./out or $GAMMATEXT_OUT)
   --chromosomes LIST  restrict to chromosomes, e.g. 21,22,X
   --words N           γwords per window for classify (default 7000)
 ";

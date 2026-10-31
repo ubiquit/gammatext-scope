@@ -7,11 +7,11 @@ namespace GammaTextScope.Tests
 {
     public class SequenceMaskingTests
     {
-        private static Dictionary<string, List<EnsembleGeneEntry>> Genes(params (int Start, int End)[] genes)
+        private static Dictionary<string, List<GeneEntry>> Genes(params (int Start, int End)[] genes)
         {
-            var index = new Dictionary<string, List<EnsembleGeneEntry>>();
+            var index = new Dictionary<string, List<GeneEntry>>();
             for (int i = 0; i < genes.Length; i++)
-                index["g" + i] = new List<EnsembleGeneEntry> { new EnsembleGeneEntry { Chromosome = "chr1", StartPosition = genes[i].Start, EndPosition = genes[i].End } };
+                index["g" + i] = new List<GeneEntry> { new GeneEntry { Chromosome = "chr1", StartPosition = genes[i].Start, EndPosition = genes[i].End } };
             return index;
         }
 
@@ -24,10 +24,10 @@ namespace GammaTextScope.Tests
             return WindowHelper.ReadSequenceFromFile(path, "sample_chr1.txt", Genes(genes), mode);
         }
 
-        // Legacy gene-mask conventions pinned by expected/ (see WindowHelper): a gene (S, E) covers the
+        // Gene-mask conventions pinned by expected/ (see WindowHelper): a gene (S, E) covers the
         // 0-based positions S-2..E-2, and the first gene of a chromosome is skipped.
         [Fact]
-        public void GeneMaskKeepsTheLegacyOffsetAndSkipsTheFirstGene()
+        public void GeneMaskUsesTheShiftedOffsetAndSkipsTheFirstGene()
         {
             // positions: 0123456789 0123456789
             //            ACGTACGTAC GTACGTACGT

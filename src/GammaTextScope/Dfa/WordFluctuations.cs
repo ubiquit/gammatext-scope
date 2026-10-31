@@ -11,7 +11,7 @@ namespace GammaTextScope
     /// every word and the DFA α of each series that has at least
     /// <see cref="GenomeConstants.AlphaWordThreshold"/> occurrences. The gap bookkeeping
     /// (the first gap is the position of the first occurrence, counted from 1) follows
-    /// the legacy pipeline's word index and is pinned by expected/.
+    /// the word index and is pinned by expected/.
     /// </summary>
     public static class WordFluctuations
     {
@@ -45,7 +45,7 @@ namespace GammaTextScope
             return flucts.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        /// <summary>DFA α of an arbitrary series; -1000 when the series is shorter than the threshold (legacy sentinel).</summary>
+        /// <summary>DFA α of an arbitrary series; -1000 when the series is shorter than the threshold (sentinel).</summary>
         public static double DfaAlpha(List<double> series, int threshold)
         {
             if (series.Count < threshold) return -1000;

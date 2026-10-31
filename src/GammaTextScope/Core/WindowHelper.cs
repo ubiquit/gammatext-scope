@@ -9,7 +9,7 @@ namespace GammaTextScope
     /// Reads one chromosome file and returns the text a feature type keeps: the protein-coding
     /// gene stretches (Gene, Exon), everything outside them (Intergenic) or the whole sequence.
     ///
-    /// Legacy conventions, pinned by the reference outputs in expected/ and replicated by
+    /// Conventions pinned by the reference outputs in expected/ and replicated by
     /// FilteredToRawMapper and figures/make_figures.py — do not "fix":
     ///  * the running index starts at 1 and is incremented before each character is tested,
     ///    so a gene (Start, End) covers the 0-based file positions Start-2 .. End-2;
@@ -20,7 +20,7 @@ namespace GammaTextScope
     /// </summary>
     public static class WindowHelper
     {
-        public static string ReadSequenceFromFile(string path, string fileName, Dictionary<string, List<EnsembleGeneEntry>> geneIndex, FeatureType featureType)
+        public static string ReadSequenceFromFile(string path, string fileName, Dictionary<string, List<GeneEntry>> geneIndex, FeatureType featureType)
         {
             switch (featureType)
             {
@@ -33,14 +33,14 @@ namespace GammaTextScope
             }
         }
 
-        private static string ReadGeneticSequenceFromFile(string path, string fileName, Dictionary<string, List<EnsembleGeneEntry>> geneIndex)
+        private static string ReadGeneticSequenceFromFile(string path, string fileName, Dictionary<string, List<GeneEntry>> geneIndex)
         {
             var geneList = GetChrGenes(ChromosomeOf(fileName), geneIndex);
             long index = 1;
             var sb = new StringBuilder();
 
             using var reader = new StreamReader(path);
-            EnsembleGeneEntry currentGene = FindNextGene(geneList); // skips the first gene (legacy)
+            GeneEntry currentGene = FindNextGene(geneList); // skips the first gene (see the class summary)
 
             while (!reader.EndOfStream)
             {
@@ -62,14 +62,14 @@ namespace GammaTextScope
             return sb.ToString();
         }
 
-        private static string ReadIntergenicSequenceFromFile(string path, string fileName, Dictionary<string, List<EnsembleGeneEntry>> geneIndex)
+        private static string ReadIntergenicSequenceFromFile(string path, string fileName, Dictionary<string, List<GeneEntry>> geneIndex)
         {
             var geneList = GetChrGenes(ChromosomeOf(fileName), geneIndex);
             long index = 1;
             var sb = new StringBuilder();
 
             using var reader = new StreamReader(path);
-            EnsembleGeneEntry currentGene = FindNextGene(geneList); // skips the first gene (legacy)
+            GeneEntry currentGene = FindNextGene(geneList); // skips the first gene (see the class summary)
 
             while (!reader.EndOfStream)
             {
@@ -84,7 +84,7 @@ namespace GammaTextScope
                     }
 
                     if (index >= currentGene.StartPosition && index <= currentGene.EndPosition)
-                        continue; // inside a gene: dropped; the gene list is not advanced here (legacy)
+                        continue; // inside a gene: dropped; the gene list is not advanced here (see the class summary)
 
                     sb.Append(c);
 
@@ -108,9 +108,9 @@ namespace GammaTextScope
         private static string ChromosomeOf(string fileName) => fileName.Split('_').Last().Split('.').First();
 
         /// <summary>The genes of one chromosome, ordered by start and then end position (a fresh list; the index is not modified).</summary>
-        private static List<EnsembleGeneEntry> GetChrGenes(string chromosome, Dictionary<string, List<EnsembleGeneEntry>> geneIndex)
+        private static List<GeneEntry> GetChrGenes(string chromosome, Dictionary<string, List<GeneEntry>> geneIndex)
         {
-            var retlist = new List<EnsembleGeneEntry>();
+            var retlist = new List<GeneEntry>();
             foreach (var gene in geneIndex)
                 foreach (var occ in gene.Value)
                     if (occ.Chromosome.Equals(chromosome))
@@ -120,7 +120,7 @@ namespace GammaTextScope
         }
 
         /// <summary>Removes the head of the list and returns the new head (null when the list is exhausted).</summary>
-        private static EnsembleGeneEntry FindNextGene(List<EnsembleGeneEntry> chrGenes)
+        private static GeneEntry FindNextGene(List<GeneEntry> chrGenes)
         {
             if (chrGenes.Count == 0)
                 return null;

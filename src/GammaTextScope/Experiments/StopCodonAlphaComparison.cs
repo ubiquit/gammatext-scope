@@ -23,7 +23,7 @@ namespace GammaTextScope
         private const int WindowWidth = 1; // WW1 ≈ 133k bp, closest to 100k
 
         /// <param name="merged">WholeGenome only: use the union of the Intergenic and Gene window
-        /// classifications (legacy behaviour, output suffix WholeGenomeMerged) instead of the
+        /// classifications (output suffix WholeGenomeMerged; depends on the annotation) instead of the
         /// annotation-free whole-genome classification.</param>
         public void Run(string speciesNormal, string speciesTumor, string pairName = null,
                         FeatureType featureType = FeatureType.Intergenic, bool merged = false)
@@ -39,7 +39,7 @@ namespace GammaTextScope
             {
                 foreach (var s in new[] { speciesNormal, speciesTumor })
                     if (!Directory.Exists(GetIndexDir(s, FeatureType.WholeGenome)))
-                        throw new ArgumentException($"no WholeGenome classification for {s} ({GetIndexDir(s, FeatureType.WholeGenome)}): run 'classify --mode WholeGenome' first, or pass --merged for the legacy union of Intergenic and Gene");
+                        throw new ArgumentException($"no WholeGenome classification for {s} ({GetIndexDir(s, FeatureType.WholeGenome)}): run 'classify --mode WholeGenome' first, or pass --merged for the union of the Intergenic and Gene classifications");
             }
 
             RunSingleFeature(speciesNormal, speciesTumor, pairName, featureType);
@@ -123,7 +123,7 @@ namespace GammaTextScope
         }
 
         // ═══════════════════════════════════════════════════════════════
-        //  WholeGenomeMerged path (legacy): merge Intergenic + Gene alpha results
+        //  WholeGenomeMerged path: merge Intergenic + Gene alpha results
         // ═══════════════════════════════════════════════════════════════
 
         private void RunWholeGenome(string speciesNormal, string speciesTumor, string pairName)
@@ -263,8 +263,8 @@ namespace GammaTextScope
             string chr,
             string normalIndexDir, string tumorIndexDir,
             Dictionary<string, string> normalChrFiles, Dictionary<string, string> tumorChrFiles,
-            Dictionary<string, List<EnsembleGeneEntry>> normalGeneIndex,
-            Dictionary<string, List<EnsembleGeneEntry>> tumorGeneIndex,
+            Dictionary<string, List<GeneEntry>> normalGeneIndex,
+            Dictionary<string, List<GeneEntry>> tumorGeneIndex,
             FeatureType featureType)
         {
             var normalWindows = ParseIndexFile(normalIndexDir, chr);
@@ -391,11 +391,11 @@ namespace GammaTextScope
         /// <summary>
         /// Get sorted gene list for a chromosome, replicating WindowHelper.GetChrGenes logic.
         /// </summary>
-        private static List<EnsembleGeneEntry> GetChrGeneList(
-            string chr, Dictionary<string, List<EnsembleGeneEntry>> geneIndex)
+        private static List<GeneEntry> GetChrGeneList(
+            string chr, Dictionary<string, List<GeneEntry>> geneIndex)
         {
             // chr comes in as "chr1", "chrX", etc.
-            var result = new List<EnsembleGeneEntry>();
+            var result = new List<GeneEntry>();
             foreach (var kv in geneIndex)
                 foreach (var gene in kv.Value)
                     if (gene.Chromosome != null && gene.Chromosome.Equals(chr, StringComparison.OrdinalIgnoreCase))
@@ -567,12 +567,12 @@ namespace GammaTextScope
             return map;
         }
 
-        private static Dictionary<string, List<EnsembleGeneEntry>> CloneGeneIndex(
-            Dictionary<string, List<EnsembleGeneEntry>> src)
+        private static Dictionary<string, List<GeneEntry>> CloneGeneIndex(
+            Dictionary<string, List<GeneEntry>> src)
         {
-            var clone = new Dictionary<string, List<EnsembleGeneEntry>>(src.Count);
+            var clone = new Dictionary<string, List<GeneEntry>>(src.Count);
             foreach (var kv in src)
-                clone[kv.Key] = new List<EnsembleGeneEntry>(kv.Value);
+                clone[kv.Key] = new List<GeneEntry>(kv.Value);
             return clone;
         }
 

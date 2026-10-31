@@ -16,9 +16,9 @@ namespace GammaTextScope
         /// written by <c>prepare-annotation</c>. GFF3 coordinates are 1-based and inclusive; both start
         /// and end are decremented by one. The index is keyed by the line's first attribute (ID).
         /// </summary>
-        public static Dictionary<string, List<EnsembleGeneEntry>> ReadGeneIndexFromStream(string geneInfoDir, FeatureType featureType)
+        public static Dictionary<string, List<GeneEntry>> ReadGeneIndexFromStream(string geneInfoDir, FeatureType featureType)
         {
-            var geneIndex = new Dictionary<string, List<EnsembleGeneEntry>>();
+            var geneIndex = new Dictionary<string, List<GeneEntry>>();
 
             // the unmasked whole genome needs no annotation; do not require the folder
             if (featureType == FeatureType.WholeGenome)
@@ -56,10 +56,9 @@ namespace GammaTextScope
         /// tokens, ends in a non-empty token and extends past lastFinishIndex. If no such
         /// prefix exists the whole remainder is returned with isEnd = true.
         ///
-        /// Incremental re-implementation of <see cref="FindNextLengthWindowLegacy"/>: it
-        /// tokenises only as far as the window needs instead of splitting the entire
-        /// remainder of the chromosome for every window (which made the legacy scanner
-        /// quadratic in chromosome length). The tokenisation rule is that of
+        /// Incremental form of <see cref="FindNextLengthWindowReference"/>: it tokenises only as
+        /// far as the window needs instead of splitting the entire remainder of the chromosome
+        /// for every window (which makes the reference scanner quadratic in chromosome length). The tokenisation rule is that of
         /// String.Split(new[]{"TAG","TAA","TGA"}, StringSplitOptions.None): scan left to
         /// right, split at the first position where a stop codon starts, resume after it.
         /// </summary>
@@ -82,7 +81,7 @@ namespace GammaTextScope
                 int index = tokens.Count - 1;
                 if (index >= minIndex && index > lastFinishIndex && token.Length > 0)
                 {
-                    lastFinishIndex += length; // kept from the legacy implementation; callers reset it after every window
+                    lastFinishIndex += length; // callers reset it after every window
                     isEnd = false;
                     return tokens;
                 }
@@ -106,7 +105,7 @@ namespace GammaTextScope
         }
 
         /// <summary>The original scanner, kept only for the equivalence test in WindowScannerTests.</summary>
-        public static List<string> FindNextLengthWindowLegacy(string sequence, int lastStartPosition, ref int lastFinishIndex, int length, out bool isEnd, ref int retry, int windowWidth)
+        public static List<string> FindNextLengthWindowReference(string sequence, int lastStartPosition, ref int lastFinishIndex, int length, out bool isEnd, ref int retry, int windowWidth)
         {
             string endString = sequence.Substring(lastStartPosition);
             var tokenizedProcessingString = Tokenizer.TokenizeOnStopCodons(endString, GenomeConstants.stopWords, false);
@@ -142,7 +141,7 @@ namespace GammaTextScope
         /// Number of nucleotides a token list covers: every token plus 3 for the stop codon that
         /// ended it (empty tokens stand for adjacent stop codons). The window that reaches the end
         /// of the chromosome (<paramref name="isEnd"/>) has no closing stop codon, so 3 is taken off
-        /// again. Legacy convention, pinned by expected/.
+        /// again. Convention pinned by expected/.
         /// </summary>
         public static int GetTokenizedSequenceLength(List<string> tokenized, bool isEnd)
         {
@@ -198,7 +197,7 @@ namespace GammaTextScope
 
         // ───────── GFF3 parsing ─────────
 
-        private static EnsembleGeneEntry ReadGeneFeatureLine(string lineIn, FeatureType featureType, Dictionary<string, List<EnsembleGeneEntry>> geneIndex)
+        private static GeneEntry ReadGeneFeatureLine(string lineIn, FeatureType featureType, Dictionary<string, List<GeneEntry>> geneIndex)
         {
             string[] line = lineIn.Split('\t');
 
@@ -208,7 +207,7 @@ namespace GammaTextScope
             return featureType == FeatureType.Exon ? CreateExonFromLine(line, geneIndex) : CreateGeneFromLine(line);
         }
 
-        private static EnsembleGeneEntry CreateGeneFromLine(string[] line)
+        private static GeneEntry CreateGeneFromLine(string[] line)
         {
             int startPos = -1;
             int endPos = -1;
@@ -222,7 +221,7 @@ namespace GammaTextScope
 
                 if (id != null && geneType != null && geneType.Equals("protein_coding"))
                 {
-                    return new EnsembleGeneEntry
+                    return new GeneEntry
                     {
                         ID = id,
                         GeneName = id,
@@ -247,7 +246,7 @@ namespace GammaTextScope
             return eq < 0 ? null : a.Substring(eq + 1);
         }
 
-        private static EnsembleGeneEntry CreateExonFromLine(string[] line, Dictionary<string, List<EnsembleGeneEntry>> workingGeneIndex)
+        private static GeneEntry CreateExonFromLine(string[] line, Dictionary<string, List<GeneEntry>> workingGeneIndex)
         {
             int startPos = -1;
             int endPos = -1;
@@ -269,14 +268,14 @@ namespace GammaTextScope
 
                 var transcriptType = line[1];
 
-                bool hasEnsembleGene = locus_tag == null ? false : workingGeneIndex.Any(x => x.Value.Any(y => y.GeneName.Equals("gene-" + locus_tag)));
+                bool hasLocusTagGene = locus_tag == null ? false : workingGeneIndex.Any(x => x.Value.Any(y => y.GeneName.Equals("gene-" + locus_tag)));
 
-                if (parentName != null || (workingGeneIndex.ContainsKey("gene-" + parentName) || hasEnsembleGene))
+                if (parentName != null || (workingGeneIndex.ContainsKey("gene-" + parentName) || hasLocusTagGene))
                 {
                     try
                     {
-                        var gene = hasEnsembleGene ? workingGeneIndex["gene-" + locus_tag].First() : workingGeneIndex["gene-" + parentName].First();
-                        return new EnsembleGeneEntry
+                        var gene = hasLocusTagGene ? workingGeneIndex["gene-" + locus_tag].First() : workingGeneIndex["gene-" + parentName].First();
+                        return new GeneEntry
                         {
                             ID = geneData[0].Split('=')[1],
                             GeneName = geneData[0].Split('=')[1],
@@ -295,7 +294,7 @@ namespace GammaTextScope
 
                 // Ensembl format: exons have Parent=transcript:... instead of gene=...
                 // Match exon to a gene by checking if it falls within a gene's position range on the same chromosome
-                if (parentName == null && !hasEnsembleGene)
+                if (parentName == null && !hasLocusTagGene)
                 {
                     string chromosome = line[0];
                     int exonStart = startPos - 1;
@@ -306,7 +305,7 @@ namespace GammaTextScope
                         var gene = kvp.Value.FirstOrDefault(g => g.Chromosome == chromosome && exonStart >= g.StartPosition && exonEnd <= g.EndPosition);
                         if (gene != null)
                         {
-                            return new EnsembleGeneEntry
+                            return new GeneEntry
                             {
                                 ID = geneData[0].Split('=')[1],
                                 GeneName = geneData[0].Split('=')[1],
@@ -324,12 +323,12 @@ namespace GammaTextScope
             return null;
         }
 
-        private static void UpdateGeneIndex(EnsembleGeneEntry entry, Dictionary<string, List<EnsembleGeneEntry>> index)
+        private static void UpdateGeneIndex(GeneEntry entry, Dictionary<string, List<GeneEntry>> index)
         {
             if (index.TryGetValue(entry.GeneName, out var entries))
                 entries.Add(entry);
             else
-                index.Add(entry.GeneName, new List<EnsembleGeneEntry> { entry });
+                index.Add(entry.GeneName, new List<GeneEntry> { entry });
         }
     }
 }

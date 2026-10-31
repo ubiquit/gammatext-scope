@@ -8,7 +8,7 @@ using GammaTextScope;
 namespace GammaTextScope.Tests
 {
     /// <summary>
-    /// The incremental window scanner must return exactly what the legacy
+    /// The incremental window scanner must return exactly what the reference
     /// split-the-whole-remainder scanner returned, window after window.
     /// </summary>
     public class WindowScannerTests
@@ -32,7 +32,7 @@ namespace GammaTextScope.Tests
             while (startA < sequence.Length)
             {
                 var a = SequenceHelper.FindNextLengthWindow(sequence, startA, ref finishA, wordsPerWindow, out bool endA, ref retryA, 1);
-                var b = SequenceHelper.FindNextLengthWindowLegacy(sequence, startB, ref finishB, wordsPerWindow, out bool endB, ref retryB, 1);
+                var b = SequenceHelper.FindNextLengthWindowReference(sequence, startB, ref finishB, wordsPerWindow, out bool endB, ref retryB, 1);
                 Assert.Equal(b, a);
                 Assert.Equal(endB, endA);
                 Assert.Equal(finishB, finishA);
@@ -50,7 +50,7 @@ namespace GammaTextScope.Tests
         [InlineData(2, 200_000, 0.30, 300)]   // many adjacent stop codons -> many empty tokens
         [InlineData(3, 50_000, 0.02, 300)]    // few tokens: exercises the end-of-sequence path
         [InlineData(4, 120_000, 0.08, 7000)]  // fewer tokens than one window
-        public void IncrementalScannerMatchesLegacyOnSyntheticSequences(int seed, int length, double density, int words)
+        public void IncrementalScannerMatchesReferenceOnSyntheticSequences(int seed, int length, double density, int words)
         {
             AssertWindowsIdentical(RandomSequence(seed, length, density), words);
         }
@@ -63,7 +63,7 @@ namespace GammaTextScope.Tests
         }
 
         [SkippableFact]
-        public void IncrementalScannerMatchesLegacyOnRealChromosomePrefix()
+        public void IncrementalScannerMatchesReferenceOnRealChromosomePrefix()
         {
             Skip.IfNot(Dataset.V1.SequencesAvailable, "v1 sequence data not available under " + TestData.DataRoot);
             // 4 Mb from the middle of chr21 — the start of the chromosome is an unassembled N run without stop codons

@@ -31,8 +31,8 @@ namespace GammaTextScope
             var tumorChrFiles = GetChrFiles(speciesTumor);
 
             // Load gene annotations if feature-filtering is needed
-            Dictionary<string, List<EnsembleGeneEntry>> normalGeneIndex = null;
-            Dictionary<string, List<EnsembleGeneEntry>> tumorGeneIndex = null;
+            Dictionary<string, List<GeneEntry>> normalGeneIndex = null;
+            Dictionary<string, List<GeneEntry>> tumorGeneIndex = null;
             if (featureType != FeatureType.WholeGenome)
             {
                 Console.WriteLine($"  Loading gene annotations for {featureLabel}...");
@@ -243,7 +243,7 @@ namespace GammaTextScope
         // ───────── Sequence loading ─────────
 
         private static string LoadSequence(Dictionary<string, string> chrFiles, string chr,
-            Dictionary<string, List<EnsembleGeneEntry>> geneIndex, FeatureType featureType)
+            Dictionary<string, List<GeneEntry>> geneIndex, FeatureType featureType)
         {
             if (!chrFiles.TryGetValue(chr, out var filePath)) return "";
 
@@ -257,12 +257,12 @@ namespace GammaTextScope
             return CleanSequence(WindowHelper.ReadSequenceFromFile(filePath, Path.GetFileName(filePath), clonedIndex, featureType));
         }
 
-        private static Dictionary<string, List<EnsembleGeneEntry>> CloneGeneIndex(
-            Dictionary<string, List<EnsembleGeneEntry>> src)
+        private static Dictionary<string, List<GeneEntry>> CloneGeneIndex(
+            Dictionary<string, List<GeneEntry>> src)
         {
-            var clone = new Dictionary<string, List<EnsembleGeneEntry>>(src.Count);
+            var clone = new Dictionary<string, List<GeneEntry>>(src.Count);
             foreach (var kv in src)
-                clone[kv.Key] = new List<EnsembleGeneEntry>(kv.Value);
+                clone[kv.Key] = new List<GeneEntry>(kv.Value);
             return clone;
         }
 

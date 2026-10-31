@@ -39,10 +39,10 @@ namespace GammaTextScope
         /// <param name="sortedGenes">Genes for this chromosome, sorted by StartPosition (will be cloned).</param>
         /// <param name="chrRawCharCount">Total character count in the raw chromosome file (excluding newlines).</param>
         /// <param name="isGene">true = Gene feature type, false = Intergenic feature type.</param>
-        public static FilteredToRawMapper Build(List<EnsembleGeneEntry> sortedGenes, long chrRawCharCount, bool isGene)
+        public static FilteredToRawMapper Build(List<GeneEntry> sortedGenes, long chrRawCharCount, bool isGene)
         {
             // Replicate initial FindNextGene: removes first gene, returns second
-            var genes = new List<EnsembleGeneEntry>(sortedGenes);
+            var genes = new List<GeneEntry>(sortedGenes);
             if (genes.Count > 0)
                 genes.RemoveAt(0);
 
@@ -154,7 +154,7 @@ namespace GammaTextScope
 
         // ───────── internals ─────────
 
-        private static List<(long Start, long End)> MergeGeneRegions(List<EnsembleGeneEntry> genes)
+        private static List<(long Start, long End)> MergeGeneRegions(List<GeneEntry> genes)
         {
             if (genes.Count == 0) return new List<(long, long)>();
 
