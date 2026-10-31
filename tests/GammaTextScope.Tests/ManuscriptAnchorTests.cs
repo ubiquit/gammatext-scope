@@ -23,8 +23,14 @@ namespace GammaTextScope.Tests
         }
 
         [Theory]
-        [InlineData("BreastCancer_Normal_vs_Tumor", -836)]
-        [InlineData("Melanoma_Normal_vs_Tumor", 1099)]
+        // The submitted manuscript printed -836 and +1,099. The alignment correction of
+        // 31 October 2026 (re-anchoring after a lost stretch) moved the breast-cancer total
+        // by 10 and the melanoma total by 1,693: the v1 melanoma pair has a heterozygous
+        // difference every kilobase (see README, Input provenance), so its alignment is
+        // lost in 15 % of the windows even after the correction (19 % before) and its
+        // totals are not meaningful. Dataset v2 is the one the revised manuscript uses.
+        [InlineData("BreastCancer_Normal_vs_Tumor", -826)]
+        [InlineData("Melanoma_Normal_vs_Tumor", 2792)]
         public void GenomeWideStopCodonDifferenceIntergenic(string pair, long expectedTotal)
         {
             var rows = TestData.Lines(TestData.ExpectedV1($"Tumor/{pair}/StopCodonDensity_Intergenic/{pair}_StopCodonDensity_100k_perChromosome.tsv")).Skip(1);

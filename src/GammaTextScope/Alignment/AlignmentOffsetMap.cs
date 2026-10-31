@@ -28,6 +28,12 @@ namespace GammaTextScope
         private const int ReanchorLen = 64;                // longer anchor for re-anchoring (more specific)
         private const int ReanchorSearchRadius = 5000;     // wider search at segment boundary
         private const int ReanchorProbes = 5;              // number of probe positions to vote on offset
+        // Re-anchor inside a segment as well, once the fine scan has failed this many steps in a
+        // row (20 x 500 bp = 10 kb). That happens only where the map has lost the sequence, in
+        // practice after a long N-run (a centromere), where the anchors match trivially on N and
+        // the offset comes out wrong by more than MaxSearchRadius. A point mutation fails one
+        // step, an indel is resolved by the +-200 search, so neither reaches the limit.
+        private const int LostStepsBeforeReanchor = 20;
 
         // Sorted list of (normalPos, cumulativeOffset) breakpoints.
         // Between breakpoints the offset is constant.
@@ -64,6 +70,7 @@ namespace GammaTextScope
 
                 // --- Fine-grained scanning within the segment ---
                 int currentOffset = segOffset;
+                int lostSteps = 0;
 
                 for (int nPos = segStart + StepSize; nPos < segEnd; nPos += StepSize)
                 {
@@ -73,10 +80,12 @@ namespace GammaTextScope
                     if (expectedTPos >= 0 && expectedTPos + AnchorLen <= tumorLen &&
                         SequenceMatch(normalSeq, nPos, tumorSeq, expectedTPos, AnchorLen))
                     {
+                        lostSteps = 0;
                         continue; // still aligned
                     }
 
                     // Lost alignment — search nearby for the anchor
+                    bool found = false;
                     for (int delta = 1; delta <= MaxSearchRadius; delta++)
                     {
                         // Try shift right (tumor has insertion)
@@ -86,6 +95,7 @@ namespace GammaTextScope
                         {
                             currentOffset += delta;
                             map._breakpoints.Add((nPos, currentOffset));
+                            found = true;
                             break;
                         }
 
@@ -96,11 +106,24 @@ namespace GammaTextScope
                         {
                             currentOffset -= delta;
                             map._breakpoints.Add((nPos, currentOffset));
+                            found = true;
                             break;
                         }
                     }
+                    if (found) { lostSteps = 0; continue; }
 
-                    // If not found, keep current offset and try again at next step.
+                    // Not found: keep the current offset and try again at the next step. After
+                    // LostStepsBeforeReanchor consecutive failures the sequence is lost, so do the
+                    // wide re-anchor search here; if that finds nothing either, keep going.
+                    if (++lostSteps >= LostStepsBeforeReanchor)
+                    {
+                        lostSteps = 0;
+                        if (TryFindOffsetAtPosition(normalSeq, tumorSeq, nPos, tumorLen, out int reOffset) && reOffset != currentOffset)
+                        {
+                            currentOffset = reOffset;
+                            map._breakpoints.Add((nPos, currentOffset));
+                        }
+                    }
                 }
             }
 
@@ -117,7 +140,12 @@ namespace GammaTextScope
         /// Returns the consensus offset via majority vote among successful probes.
         /// </summary>
         private static int FindOffsetAtPosition(string normalSeq, string tumorSeq, int normalPos, int tumorLen)
+            => TryFindOffsetAtPosition(normalSeq, tumorSeq, normalPos, tumorLen, out int offset) ? offset : 0; // can't determine — assume identity
+
+        /// <summary>As <see cref="FindOffsetAtPosition"/>, but reports failure instead of assuming identity.</summary>
+        private static bool TryFindOffsetAtPosition(string normalSeq, string tumorSeq, int normalPos, int tumorLen, out int offset)
         {
+            offset = 0;
             // Try multiple probe positions near normalPos to get a robust offset estimate.
             // Each probe uses a longer anchor (64bp) and wider search radius (5000bp).
             var offsets = new List<int>();
@@ -158,11 +186,12 @@ namespace GammaTextScope
             }
 
             if (offsets.Count == 0)
-                return 0; // can't determine — assume identity
+                return false;
 
-            // Return median offset (robust against outliers)
+            // median offset (robust against outliers)
             offsets.Sort();
-            return offsets[offsets.Count / 2];
+            offset = offsets[offsets.Count / 2];
+            return true;
         }
 
         /// <summary>

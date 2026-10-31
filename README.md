@@ -115,6 +115,24 @@ changed, and the window classes, decay dots and `DecayGapDFA_*` summaries are
 identical. The tables as they stood before are in the git history, and the
 figures of the submitted manuscript show the artefact as off-scale peaks.
 
+Correction of 31 October 2026: the offset map (`AlignmentOffsetMap`) re-anchored
+with its wide search only every 10 Mb, so after a long N-run (a centromere),
+where the anchors match trivially on N, it could come out with an offset wrong
+by more than its ±200 bp search radius and stay lost until the next 10-Mb
+point. A base-by-base check of every window found this in two stretches of
+the breast-cancer pair (chr1 windows 645–669 and chr9 windows 292–346 in
+npc-DNA; 80 of 16,438 windows), where the tumour window therefore covered a
+different piece of DNA and the Delta values were noise; all other windows of
+both pairs and both modes covered the same DNA (2–4 mismatched bases per
+window). The map now re-anchors wherever the fine scan has failed 20 steps
+(10 kb) in a row. The `alpha-compare` and `density` tables of both datasets
+were regenerated; only windows and 100-kb bins inside such stretches changed
+(dataset v2: 81 npc windows of the breast-cancer pair and the chr1/chr9 bars of
+its Figure 1 by 2 and 1; nothing in the melanoma pair). The v1 melanoma pair,
+whose inputs differ at every heterozygous site, was misaligned in 19 % of its
+windows before and is still misaligned in 15 % after the correction; its v1
+tables are kept for the record only.
+
 Runtime: `classify` is single-threaded per chromosome and its legacy window
 scanner is quadratic in chromosome length (it re-tokenises the remainder of
 the chromosome for every window), so chr21 takes ~1–2 min but chr1 ~50 min and
