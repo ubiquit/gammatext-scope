@@ -1,5 +1,7 @@
 # gammatext-scope
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23844266.svg)](https://doi.org/10.5281/zenodo.23844266)
+
 Stop-codon γtext comparison of a tumour genome with its matched normal genome —
 the computational pipeline behind the **DNA-scope** described in
 
@@ -256,9 +258,9 @@ tests; changing any of them means regenerating `expected/`:
 ## How to cite
 
 See `CITATION.cff`. Please cite the article above and, for the software, the
-Zenodo record of the release you used (DOI to be added with the first
-release). The DFA implementation requires the PhysioNet citations listed in
-`THIRD_PARTY_NOTICES.md`.
+Zenodo record: https://doi.org/10.5281/zenodo.23844266 (release v1.0.0,
+1 November 2026). The DFA implementation requires the PhysioNet citations
+listed in `THIRD_PARTY_NOTICES.md`.
 
 ## Licence
 
