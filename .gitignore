@@ -10,3 +10,6 @@ figures/.venv/
 *.pyc
 
 figures/.cache/
+
+# default output root of scripts/reproduce_article9.sh
+/out/

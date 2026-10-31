@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOTE (kept as run on 15 October 2026): expected/Tumor/... has since moved to expected/v1/Tumor/...
 # Melanoma v3 driver (Git Bash): WSL preparation -> pipeline -> verification. No backup
 # needed (v1 backed up on 2026-10-15; v2 kept in place). Nothing existing is modified.
 set -uo pipefail

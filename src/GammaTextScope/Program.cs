@@ -18,7 +18,7 @@ commands
   decay-dfa           --pair P --mode M [--merged]       DFA of the qualification-decay marker gaps (needs alpha-compare)
 
 options
-  --mode M            Intergenic | Gene | Exon | WholeGenome
+  --mode M            Intergenic | Gene | WholeGenome   (Exon: experimental, untested)
   --merged            with --mode WholeGenome: use the union of the Intergenic and Gene classifications
                       (legacy behaviour, outputs *_WholeGenomeMerged) instead of whole-genome classifications
   --data-root DIR     input root (default D:\Files\Stream or $GAMMATEXT_DATA)
@@ -44,6 +44,12 @@ options
                 WordsPerWindow = int.Parse(opts.GetValueOrDefault("words") ?? "7000"),
             };
             PipelineConfig.Default = cfg;
+
+            if (args[0] != "decay-dfa" && !System.IO.Directory.Exists(cfg.DataRoot))
+            {
+                Console.Error.WriteLine($"input root not found: {cfg.DataRoot}\nset --data-root DIR or GAMMATEXT_DATA (see README, Data layout)");
+                return 2;
+            }
 
             try
             {

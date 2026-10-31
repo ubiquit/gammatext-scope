@@ -556,6 +556,11 @@ namespace GammaTextScope
             {
                 var name = Path.GetFileName(path);
                 var chr = name.Split('_').Last().Split('.').First();
+                if (!chr.StartsWith("chr", StringComparison.Ordinal))
+                {
+                    Console.Error.WriteLine($"  skipping {name}: not a chromosome file (expected chrN.<anything>)");
+                    continue;
+                }
                 chr = NormalizeChr(chr);
                 map["chr" + chr] = path;
             }

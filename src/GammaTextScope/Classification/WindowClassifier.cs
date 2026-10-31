@@ -28,6 +28,11 @@ namespace GammaTextScope
             {
                 var file = new FileInfo(path);
                 string chromosome = file.Name.Split('_').Last().Split('.').First();
+                if (!chromosome.StartsWith("chr", StringComparison.Ordinal))
+                {
+                    Console.Error.WriteLine($"  skipping {file.Name}: not a chromosome file (expected chrN.<anything>)");
+                    continue;
+                }
                 if (!PipelineConfig.Default.IncludesChromosome(chromosome)) continue;
 
                 var sequence = WindowHelper.ReadSequenceFromFile(path, file.Name, geneIndex, featureType);

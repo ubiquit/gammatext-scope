@@ -1,0 +1,2 @@
+# figures/make_figures.py — renders the article figures from expected/
+matplotlib>=3.8

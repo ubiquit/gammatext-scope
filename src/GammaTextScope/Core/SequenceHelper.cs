@@ -18,11 +18,15 @@ namespace GammaTextScope
         /// </summary>
         public static Dictionary<string, List<EnsembleGeneEntry>> ReadGeneIndexFromStream(string geneInfoDir, FeatureType featureType)
         {
-            string[] paths = Directory.GetFiles(geneInfoDir);
             var geneIndex = new Dictionary<string, List<EnsembleGeneEntry>>();
 
-            if (featureType == FeatureType.WholeGenome && paths.Length < 1)
+            // the unmasked whole genome needs no annotation; do not require the folder
+            if (featureType == FeatureType.WholeGenome)
                 return geneIndex;
+
+            if (!Directory.Exists(geneInfoDir))
+                throw new DirectoryNotFoundException($"{geneInfoDir}: gene annotation folder not found (run prepare-annotation first, or check --data-root)");
+            string[] paths = Directory.GetFiles(geneInfoDir);
 
             // exons are attributed to their parent gene, so the gene index is needed first
             var geneIndexForExons = featureType == FeatureType.Exon ? ReadGeneIndexFromStream(geneInfoDir, FeatureType.Gene) : null;
@@ -37,6 +41,9 @@ namespace GammaTextScope
                         UpdateGeneIndex(gene, geneIndex);
                 }
             }
+
+            if (geneIndex.Count == 0)
+                Console.Error.WriteLine($"  WARNING: no protein-coding {featureType} features read from {geneInfoDir}; the {featureType} mask will be empty");
 
             return geneIndex;
         }
@@ -206,20 +213,19 @@ namespace GammaTextScope
             int startPos = -1;
             int endPos = -1;
 
-            if (line.Length > 2 && line[2].Equals("gene") && int.TryParse(line[3], out startPos) && int.TryParse(line[4], out endPos))
+            if (line.Length > 8 && line[2].Equals("gene") && int.TryParse(line[3], out startPos) && int.TryParse(line[4], out endPos))
             {
                 var geneData = line[8].Split(';');
-                var geneType = geneData.FirstOrDefault(x => x.StartsWith("gene_biotype"))?.Split("=")[1];
-                if (geneType == null) geneType = geneData.FirstOrDefault(x => x.StartsWith("gene_type"))?.Split("=")[1];
-                if (geneType == null) geneType = geneData.FirstOrDefault(x => x.StartsWith("biotype"))?.Split("=")[1];
+                var geneType = AttributeValue(geneData, "gene_biotype") ?? AttributeValue(geneData, "gene_type") ?? AttributeValue(geneData, "biotype");
                 var transcriptType = line[1];
+                string id = geneData[0].Contains('=') ? geneData[0].Split('=')[1] : null;
 
-                if (geneType != null && geneType.Equals("protein_coding"))
+                if (id != null && geneType != null && geneType.Equals("protein_coding"))
                 {
                     return new EnsembleGeneEntry
                     {
-                        ID = geneData[0].Split('=')[1],
-                        GeneName = geneData[0].Split('=')[1],
+                        ID = id,
+                        GeneName = id,
                         GeneType = geneType,
                         TranscriptType = transcriptType,
                         StartPosition = startPos - 1,
@@ -230,6 +236,15 @@ namespace GammaTextScope
             }
 
             return null;
+        }
+
+        /// <summary>Value of the first GFF attribute starting with <paramref name="key"/>, or null if absent or malformed.</summary>
+        private static string AttributeValue(string[] attributes, string key)
+        {
+            var a = attributes.FirstOrDefault(x => x.StartsWith(key));
+            if (a == null) return null;
+            int eq = a.IndexOf('=');
+            return eq < 0 ? null : a.Substring(eq + 1);
         }
 
         private static EnsembleGeneEntry CreateExonFromLine(string[] line, Dictionary<string, List<EnsembleGeneEntry>> workingGeneIndex)

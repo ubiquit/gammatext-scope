@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# NOTE (kept as run on 15 October 2026): expected/Tumor/... has since moved to expected/v1/Tumor/...
 # Driver for the v2 regeneration (run from Git Bash on Windows):
 #   A. backup of the v1 inputs and results      -> D:\Files\Backups\2026-10-15_article9_v1
 #   B. WSL: consensus genomes + annotation (prepare_v2.sh) -> D:\Files\Stream\*_v2*

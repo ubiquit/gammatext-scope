@@ -1,12 +1,18 @@
 using OxyPlot;
 using OxyPlot.Annotations;
 using OxyPlot.Axes;
+using OxyPlot.Legends;
 using OxyPlot.Series;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+
+// OxyPlot 2.2 marks the managed PdfExporter obsolete in favour of OxyPlot.SkiaSharp (a native
+// dependency). The managed exporter is kept: it needs nothing beyond .NET and the PDFs are only
+// convenience charts, the article figures come from figures/make_figures.py.
+#pragma warning disable CS0618
 
 namespace GammaTextScope
 {
@@ -115,7 +121,7 @@ namespace GammaTextScope
             }
 
             model.IsLegendVisible = true;
-            model.LegendPosition = OxyPlot.LegendPosition.BottomCenter;
+            model.Legends.Add(new Legend { LegendPosition = LegendPosition.BottomCenter });
 
             var exporter = new PdfExporter { Width = 1000, Height = 1000 };
             using (var stream = File.Create(filePath))
@@ -327,8 +333,7 @@ namespace GammaTextScope
             model.Series.Add(new OxyPlot.Series.ScatterSeries { Title = "Zipf", MarkerFill = OxyColor.FromArgb(220, 60, 120, 230), MarkerType = MarkerType.Square, MarkerSize = 0 });
             model.Series.Add(new OxyPlot.Series.ScatterSeries { Title = "Unqualified", MarkerFill = OxyColor.FromArgb(150, 190, 190, 190), MarkerType = MarkerType.Square, MarkerSize = 0 });
             model.IsLegendVisible = true;
-            model.LegendPosition = LegendPosition.BottomCenter;
-            model.LegendOrientation = LegendOrientation.Horizontal;
+            model.Legends.Add(new Legend { LegendPosition = LegendPosition.BottomCenter, LegendOrientation = LegendOrientation.Horizontal });
 
             var exporter = new PdfExporter { Width = width, Height = height };
             using (var stream = File.Create(filePath))

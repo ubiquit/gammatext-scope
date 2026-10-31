@@ -278,6 +278,11 @@ namespace GammaTextScope
             {
                 var name = Path.GetFileName(path);
                 var chr = name.Split('_').Last().Split('.').First();
+                if (!chr.StartsWith("chr", StringComparison.Ordinal))
+                {
+                    Console.Error.WriteLine($"  skipping {name}: not a chromosome file (expected chrN.<anything>)");
+                    continue;
+                }
                 chr = NormalizeChr(chr);
                 map[chr] = path;
             }
@@ -404,12 +409,11 @@ namespace GammaTextScope
             if (denom == 0.0) return (1.0, 0.0);
 
             double z = (p2 - p1) / denom;
-            // NOTE: Erf(x) is the error function, not the normal CDF Φ(x), so P is 2·erfc(|z|)
-            // instead of the two-sided normal p-value erfc(|z|/√2) — too small by a factor that
-            // grows with |z| (4× at z = 2, 60× at z = 3). The _diff and _significant tables in
-            // expected/ were produced with this formula and are kept unchanged; the article uses
-            // only the counts. Do not cite the P and Q columns.
-            double p = 2.0 * (1.0 - Erf(Math.Abs(z)));
+            // Two-sided normal p-value: P = 2·(1 − Φ(|z|)) = erfc(|z|/√2). Until 1 November 2026
+            // the code used 2·erfc(|z|), i.e. erf in place of Φ, which made P too small by a
+            // factor growing with |z| (4× at z = 2, 60× at z = 3); the _diff and _significant
+            // tables in expected/ were regenerated on that date. The article uses only the counts.
+            double p = 1.0 - Erf(Math.Abs(z) / Math.Sqrt(2.0));
             return (p, z);
         }
 

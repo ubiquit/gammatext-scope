@@ -170,6 +170,8 @@ namespace GammaTextScope
                 Console.WriteLine($"    {name}: DFA failed ({failureReason})");
             }
 
+            if (failureReason == null && (double.IsNaN(alpha) || double.IsInfinity(alpha)))
+                failureReason = "non-finite exponent (e.g. all gaps equal)";
             string alphaStr = failureReason != null
                 ? $"N/A (DFA error)"
                 : (alpha <= -999 ? "N/A (insufficient data)" : Math.Round(alpha, 4).ToString());

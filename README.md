@@ -30,7 +30,7 @@ implementation*).
 | `decay-dfa` | `_AllChromosomes.tsv` | `DecayGapDFA_<mode>/DecayGapDFA_<pair>_Summary.txt` | Tables 2–3 (DFA α of decay-marker gaps) |
 
 `<mode>` is `Intergenic` (npc-DNA), `Gene` (pc-DNA) or `WholeGenome` (the
-unmasked chromosome). For `alpha-compare` and `decay-dfa`, `--mode WholeGenome`
+unmasked chromosome); `Exon` is accepted but experimental and untested. For `alpha-compare` and `decay-dfa`, `--mode WholeGenome`
 requires whole-genome window classifications for both samples; `--merged`
 selects the legacy behaviour instead — the union of the Intergenic and Gene
 windows in genomic order (outputs suffixed `WholeGenomeMerged`), which depends
@@ -38,7 +38,7 @@ on the gene annotation.
 
 ## Build and run
 
-Requires the .NET 8 SDK.
+Requires the .NET SDK 8.0 or later.
 
 ```bash
 dotnet build -c Release
@@ -133,13 +133,19 @@ whose inputs differ at every heterozygous site, was misaligned in 19 % of its
 windows before and is still misaligned in 15 % after the correction; its v1
 tables are kept for the record only.
 
-Runtime: `classify` is single-threaded per chromosome and its legacy window
-scanner is quadratic in chromosome length (it re-tokenises the remainder of
-the chromosome for every window), so chr21 takes ~1–2 min but chr1 ~50 min and
-a genome ~5–6 h in one process. Run chromosomes as parallel processes instead
-(`scripts/classify_parallel.sh`; one `--chromosomes` value each, ~2.5 GB RAM
-per process) and a sample finishes in about an hour. The three experiments
-take seconds per chromosome.
+Correction of 1 November 2026: the `P` and `Q` columns of the
+`*_100k_diff.tsv` and `*_100k_significant.tsv` density tables used the error
+function in place of the normal CDF, so `P` was 2·erfc(|z|) instead of
+erfc(|z|/√2) and too small by a factor growing with |z|. The formula was
+corrected and those two files regenerated for both datasets; counts, rates
+and z are unchanged, and the article uses only the counts.
+
+Runtime: `classify` is single-threaded per chromosome; with the incremental
+window scanner chr21 takes a few seconds and chr1 about 20 s, a whole sample a
+few minutes in one process, less with `scripts/classify_parallel.sh` (one
+process per chromosome, ~2.5 GB RAM each). `density` and `alpha-compare` load
+one chromosome of both samples at a time (~1.5 GB RAM) and take a few seconds
+per chromosome; `decay-dfa` runs in seconds.
 
 ## Figures
 
@@ -174,7 +180,7 @@ with the construction rule.
 
 | | HCC1395 / HCC1395BL (breast cancer) | COLO829 / COLO829BL (melanoma) |
 |---|---|---|
-| normal variants | `paftools.js call` (minimap2 2.30) of NCBI assembly **GCA_021234545.1** (HCC1395BL_v1.0) against GRCh38 | ONT open data, **Clair3 1.0.4** germline calls |
+| normal variants | `paftools.js call` (minimap2 2.24, paftools.js 2.30) of NCBI assembly **GCA_021234545.1** (HCC1395BL_v1.0) against GRCh38 | ONT open data, **Clair3 1.0.4** germline calls |
 | tumour variants | SEQC2 high-confidence somatic **sSNV + sINDEL v1.2.1** (Fang et al. 2021) | ONT wf-somatic-variation, **ClairS 0.1.7**, PASS |
 | tumour VCF | germline minus somatic positions, plus somatic sites | the normal's germline records (same order) minus those overlapping a somatic span, plus somatic |
 | consensus | `bcftools consensus -H A` 1.13 per chromosome, both samples (ALT allele of every genotype) | same |
@@ -190,6 +196,54 @@ chromosome 21; and both breast-cancer samples used one annotation lifted, with
 the alignment direction inverted, onto an earlier tumour FASTA in a coordinate
 system up to ~100 kb off the analysed strings. The v2 construction removes all
 three; the consistency checks above are part of the scripts.
+
+## Legacy conventions pinned by `expected/`
+
+The following behaviours of the lifted code are deliberate reproductions of
+the legacy platform. They are pinned by the byte-identity tests and must not
+be "fixed" without regenerating `expected/`:
+
+* **Gene mask offset.** The protein-coding mask is applied in an index space
+  shifted by two: a GFF gene `[start, end]` masks the 0-based positions
+  `start−2 … end−2` (`WindowHelper`, `FilteredToRawMapper`). The first
+  (lowest-start) protein-coding gene of every chromosome is skipped; in Gene
+  mode its bases are never emitted, in Intergenic mode they count as npc-DNA.
+  A gene nested inside its predecessor leaves one base misassigned after the
+  outer gene ends. `PipelineTests.GeneMaskKeepsTheLegacyOffsetAndSkipsTheFirstGene`
+  guards this.
+* **Windows.** A window is the shortest prefix of the stop-codon tokenisation
+  with more than 7,000 tokens that ends in a non-empty token (so a window holds
+  7,001 stop codons, 7,002 when a token is empty); the last window of a
+  chromosome whose text ends with a stop codon is reported 3 bases too long.
+* **Classification.** The wizard-hat histogram bins are built by repeated
+  `+= 0.1` and compared with the literals 0.6, 0.7 and 1.0; this is
+  deterministic and `ClassificationTests` guards it. Ties for the largest peak
+  go to the lowest α bin. Class names are the legacy `alfa`, `zipf`, `ikke`.
+* **Window pairing.** `alpha-compare` pairs the i-th window of the normal with
+  the i-th window of the tumour: `StartPos`/`Length`/`Normal_StopCodons` are
+  the normal's window, `Tumor_Class` is the tumour's own i-th window (which
+  has a different extent), and `Tumor_StopCodons` is counted on the tumour
+  range that the offset map assigns to the normal window. Surplus windows of
+  the longer sample are dropped.
+* **Decay dots and DFA.** A decay dot marks a 10-window region `[c−5, c+5)`
+  in which one sample has at least 3 more qualified windows than the other;
+  in the genome-wide series the region slides across chromosome boundaries;
+  ties between alfa and Zipf dominance count as Zipf. DFA α is the global
+  log–log slope over box sizes 4 … N/4 (no crossover selection) and is
+  reported for 30 or more gaps; `N/A (DFA error)` marks series of 15–19 gaps,
+  `N/A (insufficient data)` fewer than 15.
+* **Density.** `density` counts stop codons on 100-kb bins of the normal
+  mapped through the offset map; "trials" count triplet starts including N,
+  and the genome-summary `BinEnd` is a cumulative length, not a coordinate.
+* **Alignment.** The offset map treats N as a wildcard, so it is blind inside
+  assembly gaps and re-anchors after them (see the correction of 31 October
+  above). It assumes the two sequences share their germline; for a pair with
+  a difference every kilobase (the v1 melanoma inputs) it loses the sequence
+  in a sizeable share of windows.
+* **Input contract.** One file per chromosome, upper-case `ACGTN`, no FASTA
+  header, named `chrN.<anything>` (the chromosome is the last `_`-separated
+  field before the first `.`); other files in a sample folder are ignored with
+  a warning.
 
 ## Differences from the legacy implementation
 
@@ -212,6 +266,13 @@ three; the consistency checks above are part of the scripts.
 * Every output file is written with CRLF line endings and invariant-culture
   number formatting on every platform, so a run on Linux or on a machine with a
   non-English locale stays byte-identical with `expected/`.
+
+## How to cite
+
+See `CITATION.cff`. Please cite the article above and, for the software, the
+Zenodo record of the release you used (DOI to be added with the first
+release). The DFA implementation requires the PhysioNet citations listed in
+`THIRD_PARTY_NOTICES.md`.
 
 ## Licence
 

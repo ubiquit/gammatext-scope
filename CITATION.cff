@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "gammatext-scope: stop-codon γtext comparison of tumour and matched-normal genomes (DNA-scope)"
+authors:
+  - family-names: Glattre
+    given-names: Håvard R.
+  - family-names: Glattre
+    given-names: Eystein
+  - family-names: Moe
+    given-names: Lars
+version: 1.0.0
+date-released: 2026-11-01
+license: GPL-3.0-or-later
+repository-code: "https://github.com/ubiquit/gammatext-scope"
+# doi: 10.5281/zenodo.XXXXXXX   <- filled in after the first Zenodo release
+keywords:
+  - stop codons
+  - non-coding DNA
+  - carcinogenesis
+  - detrended fluctuation analysis
+  - whole-genome sequencing
+preferred-citation:
+  type: article
+  title: "The DNA-Scope – A General Cancer Causation Formula"
+  authors:
+    - family-names: Glattre
+      given-names: Håvard R.
+    - family-names: Glattre
+      given-names: Eystein
+    - family-names: Moe
+      given-names: Lars
+  year: 2026
+  notes: "Manuscript submitted."

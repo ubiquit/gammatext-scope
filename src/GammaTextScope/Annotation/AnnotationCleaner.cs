@@ -12,7 +12,7 @@ namespace GammaTextScope
 
         public void PrepareAnnotationFile(string species)
         {
-            string filenameSpecies = species.Split("\\").Last();
+            string filenameSpecies = Path.GetFileName(species);
             string AnnotationChromosomesPath = Path.Combine(PipelineConfig.Default.StreamDir(species + "_AccessionProcessing"), filenameSpecies + "_Chromosomes.json");
             string AnnotationFilesPath = Path.Combine(PipelineConfig.Default.StreamDir(species + "_AccessionProcessing"), "genomic.gff");
             string PrintPath = Path.Combine(PipelineConfig.Default.StreamDir(species + "_GeneInfo"), filenameSpecies + "_Annotation_Converted.txt");
@@ -20,6 +20,8 @@ namespace GammaTextScope
 
             string jsonString = File.ReadAllText(AnnotationChromosomesPath);
             var dsList = JsonSerializer.Deserialize<AnnotationItem>(jsonString);
+            if (dsList == null)
+                throw new InvalidDataException($"{AnnotationChromosomesPath}: empty or invalid chromosome list");
             StringBuilder sb = new StringBuilder();
             int originalCount = 0;
             int newCount = 0;
