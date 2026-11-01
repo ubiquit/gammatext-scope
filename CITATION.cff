@@ -9,11 +9,11 @@ authors:
     given-names: Eystein
   - family-names: Moe
     given-names: Lars
-version: 1.0.0
+version: 1.1.0
 date-released: 2026-11-01
 license: GPL-3.0-or-later
 repository-code: "https://github.com/ubiquit/gammatext-scope"
-doi: 10.5281/zenodo.23844266
+doi: 10.5281/zenodo.23844265
 keywords:
   - stop codons
   - non-coding DNA

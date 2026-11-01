@@ -61,8 +61,8 @@ chromosomes.
 Sequence files hold upper-case `ACGTN`, one file per chromosome, named
 `chrN.<anything>`. Only `gene` features with `gene_type=protein_coding` are
 read from the GFF. The sequences are not part of this repository (about 3 GB
-per sample); *Input provenance* below describes how they were built from
-public sources.
+per sample); `INPUTS.md` and the scripts in `inputs/` build them from public
+sources.
 
 ## Reproducing the article
 
@@ -74,8 +74,9 @@ re-run and diffed without re-classifying:
   Kept for the record; its inputs have known construction defects (see *Input
   provenance*).
 * `expected/v2` — the regenerated dataset: breast-cancer samples `*_v2`,
-  melanoma samples `*_v3`, pairs `BreastCancer_v2*` / `Melanoma_v3*`. This is
-  the dataset the revised manuscript uses.
+  melanoma samples `*_v3`, pairs `BreastCancer_v2*` / `Melanoma_v3*`, built
+  as described in `INPUTS.md`. This is the dataset the revised manuscript
+  uses.
 
 To reproduce the tables of a dataset, copy its `Experiment_*` classification
 folders from `expected/<dataset>/<sample>/` into the output root and run the
@@ -97,47 +98,9 @@ implementation (`WindowScannerTests`).
 
 The classification files of `expected/v1` are the ones the submitted
 manuscript was built from; every table in `expected/` was produced by this
-code — `expected/v2` on 15 October 2026 from the inputs described under
-*Input provenance*, the `expected/v1` tables regenerated with it after the
-corrections below. Earlier states of the tables are in the git history.
-
-Correction of 29 October 2026: the tumour count of a window longer than
-200 kb (one that spans an N-run, a centromere or an acrocentric arm; about
-1.5 % of all windows) was counted in 100-kb chunks, and a chunk whose
-stop-codon density differed by more than 2x from the window mean was dropped
-and the rest scaled up to the full window. An N-run has density 0, so its
-chunks were always dropped and the real chunks were multiplied by 1.5, 2, 4 ...;
-every |Delta| above about 100 in the `alpha-compare` tables of both datasets,
-and every `Tumor_StopCodons = 0` row, came from that scaling and not from the
-sequences. The rule now counts every chunk. Only the `Tumor_StopCodons` and
-`Delta` columns of windows longer than 200 kb changed; the window classes,
-decay dots and `DecayGapDFA_*` summaries are identical. The figures of the
-submitted manuscript show the artefact as off-scale peaks.
-
-Correction of 31 October 2026: the offset map (`AlignmentOffsetMap`) re-anchored
-with its wide search only every 10 Mb, so after a long N-run (a centromere),
-where the anchors match trivially on N, it could come out with an offset wrong
-by more than its ±200 bp search radius and stay lost until the next 10-Mb
-point. A base-by-base check of every window found this in two stretches of
-the breast-cancer pair (chr1 windows 645–669 and chr9 windows 292–346 in
-npc-DNA; 80 of 16,438 windows), where the tumour window therefore covered a
-different piece of DNA and the Delta values were noise; all other windows of
-both pairs and both modes covered the same DNA (2–4 mismatched bases per
-window). The map now re-anchors wherever the fine scan has failed 20 steps
-(10 kb) in a row. The `alpha-compare` and `density` tables of both datasets
-were regenerated; only windows and 100-kb bins inside such stretches changed
-(dataset v2: 81 npc windows of the breast-cancer pair and the chr1/chr9 bars of
-its Figure 1 by 2 and 1; nothing in the melanoma pair). The v1 melanoma pair,
-whose inputs differ at every heterozygous site, was misaligned in 19 % of its
-windows before and is still misaligned in 15 % after the correction; its v1
-tables are kept for the record only.
-
-Correction of 1 November 2026: the `P` and `Q` columns of the
-`*_100k_diff.tsv` and `*_100k_significant.tsv` density tables used the error
-function in place of the normal CDF, so `P` was 2·erfc(|z|) instead of
-erfc(|z|/√2) and too small by a factor growing with |z|. The formula was
-corrected and those two files regenerated for both datasets; counts, rates
-and z are unchanged, and the article uses only the counts.
+code — `expected/v2` on 1 November 2026 from the inputs described under
+*Input provenance*, the `expected/v1` tables regenerated with it from the
+original classifications.
 
 Runtime: `classify` is single-threaded per chromosome; chr21 takes a few
 seconds and chr1 about 20 s, a whole sample a few minutes in one process
@@ -169,29 +132,14 @@ consensus (bcftools 1.13, samtools 1.13, minimap2 2.24, paftools.js
 |---|---|---|
 | normal variants | `paftools.js call` (minimap2 2.24, paftools.js 2.30) of NCBI assembly **GCA_021234545.1** (HCC1395BL_v1.0) against GRCh38 | ONT open data, **Clair3 1.0.4** germline calls |
 | tumour variants | SEQC2 high-confidence somatic **sSNV + sINDEL v1.2.1** (Fang et al. 2021) | ONT wf-somatic-variation, **ClairS 0.1.7**, PASS |
-| tumour VCF | germline minus somatic positions, plus somatic sites | the germline records of the normal (same order) minus those overlapping a somatic span, plus somatic |
+| tumour VCF | union of the germline and somatic records (`bcftools merge -m none`) | the germline records of the normal (same order) minus those overlapping a somatic span, plus the somatic records |
 | consensus | `bcftools consensus -H A` 1.13 per chromosome, both samples (ALT allele of every genotype) | same |
 | annotation liftover | `minimap2 -x asm5` consensus vs GRCh38, `paftools.js liftover -q 0 -l 1000 -d 1.1`, per sample | same |
+| protein-coding genes in the mask | 19,743 of the 20,031 in GENCODE v44 (the liftover rejects 288) | 19,290 (740 rejected, plus one gene lifted in the normal only) |
 | consistency check | normal–tumour alignment breakpoints on chr21 = 21 (20 somatic indels) | 23 (22 somatic indels) |
 
-Construction rule (dataset v2):
-
-1. **Variants.** Breast cancer: normal = `paftools.js call` of the NCBI
-   assembly GCA_021234545.1 (HCC1395BL_v1.0) against GRCh38; tumour = normal
-   minus the SEQC2 somatic positions plus the SEQC2 high-confidence sSNV +
-   sINDEL v1.2.1 (sites-only union). Melanoma: ONT open data, Clair3 1.0.4
-   germline and ClairS 0.1.7 somatic (PASS), `bcftools norm -m -any`; normal
-   and tumour share one germline record set in one order.
-2. **Consensus.** `samtools faidx GRCh38 <chr> | bcftools consensus -H A <vcf>`
-   per chromosome — the ALT allele of every genotype, on both samples. FASTA
-   header stripped, one file per chromosome.
-3. **Annotation.** GENCODE v44 (Ensembl 110) as BED6 →
-   `minimap2 -x asm5 -c --secondary=no <consensus> GRCh38` (the reference as
-   the query) → `paftools.js liftover -q 0 -l 1000 -d 1.1` → GFF3, per sample.
-4. **Checks.** Normal–tumour alignment breakpoints on chr21 equal the somatic
-   indel count (breast cancer 21, melanoma 23); heterozygous and homozygous
-   germline alleles are present on both sides, somatic alleles only in the
-   tumour.
+The exact commands and the scripts for every step are in `INPUTS.md` and
+`inputs/`.
 
 The dataset-v1 inputs (submitted manuscript) differed from this in three
 ways: the melanoma normal was
@@ -200,8 +148,10 @@ tumour union ordered multi-allelic records differently from the normal, so
 `bcftools consensus` applied different alleles at ~1,200 indel sites per
 chromosome 21; and both breast-cancer samples used one annotation lifted, with
 the alignment direction inverted, onto an earlier tumour FASTA in a coordinate
-system up to ~100 kb off the analysed strings. The v2 construction removes all
-three.
+system up to ~100 kb off the analysed strings; and in both pairs the
+conversion of the lifted annotation lost every protein-coding gene whose span
+equals one of its transcripts, so the gene masks held about half of the
+protein-coding genes. The v2 construction removes all four.
 
 ## Conventions pinned by `expected/`
 
@@ -242,8 +192,8 @@ tests; changing any of them means regenerating `expected/`:
   mapped through the offset map; "trials" count triplet starts including N,
   and the genome-summary `BinEnd` is a cumulative length, not a coordinate.
 * **Alignment.** The offset map treats N as a wildcard, so it is blind inside
-  assembly gaps and re-anchors after them (see the correction of 31 October
-  above). It assumes the two sequences share their germline; for a pair with
+  assembly gaps and re-anchors with a wide search once the fine scan has
+  failed 20 steps (10 kb) in a row after them. It assumes the two sequences share their germline; for a pair with
   a difference every kilobase (the v1 melanoma inputs) it loses the sequence
   in a sizeable share of windows.
 * **Output format.** Every output file is written with CRLF line endings and
@@ -258,10 +208,10 @@ tests; changing any of them means regenerating `expected/`:
 ## How to cite
 
 See `CITATION.cff`. Please cite the article above and, for the software, the
-Zenodo record: https://doi.org/10.5281/zenodo.23844265 resolves to the latest
-release (all versions); https://doi.org/10.5281/zenodo.23844266 is release
-v1.0.0 (31 October 2026). The DFA implementation requires the PhysioNet
-citations listed in `THIRD_PARTY_NOTICES.md`.
+Zenodo record https://doi.org/10.5281/zenodo.23844265, which resolves to the
+latest release; every release also has its own DOI on that page. The DFA
+implementation requires the PhysioNet citations listed in
+`THIRD_PARTY_NOTICES.md`.
 
 ## Licence
 
